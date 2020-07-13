@@ -16,11 +16,12 @@ namespace n3b.TorchOptimizationsPlugin
 { 
     public static class GasTankThrottle
     {
-        static int bucket = 0;
-        static long ticks = -1;
+        static double minRatioThrottle = 0.05;
+        static int perTicks = 13;
+        public static int buckets = 1;
         
-        static int perTicks = 13 * 160000;
-        public static int buckets = 2;
+        static int bucket = 0;
+        static long ticks = 0;
 
         private static readonly MethodInfo source = AccessTools.Method(typeof(MyGasTank), "ChangeFillRatioAmount");
 
@@ -30,16 +31,20 @@ namespace n3b.TorchOptimizationsPlugin
         public static readonly MethodInfo cb = AccessTools.Method(typeof(MyGasTank), "OnFilledRatioCallback");
         private static readonly MethodInfo patch2 = AccessTools.Method(typeof(GasTankThrottle), "OnFilledRatioCallbackPatch");
 
-        // private static readonly MethodInfo ChangeFilledRatio =
-        //     AccessTools.Method(typeof(MyGasTank), "ChangeFilledRatio");
+        private static readonly MethodInfo ChangeFilledRatio =
+            AccessTools.Method(typeof(MyGasTank), "ChangeFilledRatio");
 
         public static bool ChangeFillRatioAmountPatch(ref MyGasTank __instance, double newFilledRatio)
         {
             var oldRatio = __instance.FilledRatio;
-            // __instance.ApplyAmount(newFilledRatio);
+            __instance.ApplyAmount(newFilledRatio);
 
             // dispatch immediately
-            if (newFilledRatio < 0.05 && oldRatio > newFilledRatio) return true;
+            if (newFilledRatio < minRatioThrottle && oldRatio > newFilledRatio)
+            {
+                UpdateWork.tanksUpdated.TryRemove(__instance.GetHashCode(), out var tupleDispose);
+                return true;
+            }
             
             var tuple = new Tuple<MyGasTank, double>(__instance, newFilledRatio);
             UpdateWork.tanksUpdated.AddOrUpdate(__instance.GetHashCode(), tuple, (key, old) => tuple);
@@ -51,26 +56,31 @@ namespace n3b.TorchOptimizationsPlugin
             return false;
         }
 
-        public static void Inject(Harmony harmony)
+        public static void Init(Harmony harmony, PluginConfig config)
         {
+            minRatioThrottle = config.Threshold / 100;
+            buckets = config.Batches;
+            perTicks = config.PerTicks;
+            
             harmony.Patch(source, new HarmonyMethod(patch));
-            // harmony.Patch(cb, new HarmonyMethod(patch2));
+            harmony.Patch(cb, new HarmonyMethod(patch2));
         }
 
-        public static void Update(long current)
+        public static void Update()
         {
-            if (ticks + perTicks > current) return;
-            ticks = current;
+            if (++ticks < perTicks) return;
+            ticks = 0;
+            bucket++;
             var data = new UpdateWork.UpdateWorkData(bucket);
             Parallel.Start(UpdateWork.DoWork, null, data);
-            if (++bucket == buckets) bucket = 0;
+            if (bucket == buckets) bucket = 0;
         }
 
-        // public static void ApplyAmount(this MyGasTank tank, double amount)
-        // {
-        //     var res = (bool) ChangeFilledRatio.Invoke(tank, new object[] {amount, false});
-        //     if (res) tank.GetInventory(0).UpdateGasAmount();
-        // }
+        public static void ApplyAmount(this MyGasTank tank, double amount)
+        {
+            var res = (bool) ChangeFilledRatio.Invoke(tank, new object[] {amount, false});
+            if (res) tank.GetInventory(0).UpdateGasAmount();
+        }
     }
 
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OxygenTank), useEntityUpdate: false)]
@@ -90,13 +100,13 @@ namespace n3b.TorchOptimizationsPlugin
         public static ConcurrentDictionary<int, Tuple<MyGasTank, double>> tanksUpdated = new ConcurrentDictionary<int, Tuple<MyGasTank, double>>();
         
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        
+
         public static void DoWork(WorkData wd)
         {
             var bucket = (wd as UpdateWorkData).bucket;
             foreach (var hash in tanksUpdated.Keys)
             {
-                if ((hash & int.MaxValue) % GasTankThrottle.buckets != bucket) continue;
+                if ((hash & int.MaxValue) % GasTankThrottle.buckets != 0) continue;
                 tanksUpdated.TryRemove(hash, out var tuple);
                 if (tuple == null || tuple.Item1 == null) continue;
                 

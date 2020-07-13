@@ -1,30 +1,34 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.Threading;
+using System.Windows.Controls;
 using HarmonyLib;
 using NLog;
 using Sandbox;
-using Sandbox.ModAPI;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
+using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
 
 namespace n3b.TorchOptimizationsPlugin
 {
-    public class Plugin : TorchPluginBase
+    public class Plugin : TorchPluginBase, IWpfPlugin
     {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        public static readonly AutoResetEvent productionTick = new AutoResetEvent(false);
+        private Persistent<PluginConfig> _config;
+        public PluginConfig Config => _config?.Data;
+        private PluginControl _control;
+        public UserControl GetControl() => _control ?? (_control = new PluginControl(this));
 
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
+            SetupConfig();
             var harmony = new Harmony("n3b.TorchOptimizationsPlugin");
-            GasTankThrottle.Inject(harmony);
+            GasTankThrottle.Init(harmony, Config);
             torch.GameStateChanged += GameStateChanged;
             var manager = torch.Managers.GetManager<TorchSessionManager>();
             if (manager != null) manager.SessionStateChanged += SessionStateChanged;
@@ -33,22 +37,43 @@ namespace n3b.TorchOptimizationsPlugin
         public override void Update()
         {
             base.Update();
-            GasTankThrottle.Update(MyAPIGateway.Session.ElapsedPlayTime.Ticks);
+            GasTankThrottle.Update();
         }
 
         void GameStateChanged(MySandboxGame game, TorchGameState state)
         {
-            if (state == TorchGameState.Creating)
-            {
-                // init
-            }
+            if (state != TorchGameState.Creating) return;
+            // todo
         }
 
         void SessionStateChanged(ITorchSession session, TorchSessionState newState)
         {
-            if (newState == TorchSessionState.Unloading)
-            {
-                // cleanup
+            if (newState != TorchSessionState.Unloading) return;
+            // todo
+        }
+        
+        private void SetupConfig() {
+
+            var configFile = Path.Combine(StoragePath, "OptimizationsPluginConfig.cfg");
+
+            try {
+                _config = Persistent<PluginConfig>.Load(configFile);
+            } catch (Exception e) {
+                Log.Warn(e);
+            }
+
+            if (_config?.Data == null) {
+                _config = new Persistent<PluginConfig>(configFile, new PluginConfig());
+                _config.Save();
+            }
+        }
+        
+        public void Save() {
+            try {
+                _config.Save();
+                Log.Info("Configuration Saved.");
+            } catch (IOException e) {
+                Log.Warn(e, "Configuration failed to save");
             }
         }
     }
@@ -63,15 +88,26 @@ namespace n3b.TorchOptimizationsPlugin
 
             if (isAction)
             {
-                getType = Expression.GetActionType;
+                getType = System.Linq.Expressions.Expression.GetActionType;
             }
             else
             {
-                getType = Expression.GetFuncType;
+                getType = System.Linq.Expressions.Expression.GetFuncType;
                 types = types.Concat(new[] { methodInfo.ReturnType });
             }
 
             return methodInfo.IsStatic ? Delegate.CreateDelegate(getType(types.ToArray()), methodInfo) : Delegate.CreateDelegate(getType(types.ToArray()), target, methodInfo.Name);
         }
+    }
+    
+    public class PluginConfig : ViewModel {
+
+        private int threshold = 5;
+        private int perTicks = 13;
+        private int batches = 2;
+        
+        public int Threshold { get => threshold; set => SetValue(ref threshold, Math.Max(Math.Min(value, 100), 1)); }
+        public int PerTicks { get => perTicks; set => SetValue(ref perTicks, Math.Max(Math.Min(value, 60), 1)); }
+        public int Batches { get => batches; set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1)); }
     }
 }
