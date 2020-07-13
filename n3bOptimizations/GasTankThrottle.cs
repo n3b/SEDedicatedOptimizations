@@ -12,11 +12,12 @@ using ParallelTasks;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 
-namespace n3b.TorchOptimizationsPlugin
+namespace n3bOptimizations
 { 
     public static class GasTankThrottle
     {
-        static double minRatioThrottle = 0.05;
+        static double threshold1 = 0.06;
+        static double threshold2 = 0.03;
         static int perTicks = 13;
         public static int buckets = 1;
         
@@ -40,7 +41,7 @@ namespace n3b.TorchOptimizationsPlugin
             __instance.ApplyAmount(newFilledRatio);
 
             // dispatch immediately
-            if (newFilledRatio < minRatioThrottle && oldRatio > newFilledRatio)
+            if (oldRatio > newFilledRatio && newFilledRatio < threshold1 && newFilledRatio * 2 - oldRatio < threshold2)
             {
                 UpdateWork.tanksUpdated.TryRemove(__instance.GetHashCode(), out var tupleDispose);
                 return true;
@@ -58,7 +59,8 @@ namespace n3b.TorchOptimizationsPlugin
 
         public static void Init(Harmony harmony, PluginConfig config)
         {
-            minRatioThrottle = config.Threshold / 100;
+            threshold1 = config.Threshold1 / 100;
+            threshold2 = config.Threshold2 / 100;
             buckets = config.Batches;
             perTicks = config.PerTicks;
             

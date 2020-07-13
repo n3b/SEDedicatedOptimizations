@@ -7,8 +7,8 @@
     <ProjectGuid>{EA0F6A58-56B9-403B-9958-AFC8E9617E81}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TorchOptimizationsPlugin</RootNamespace>
-    <AssemblyName>TorchOptimizationsPlugin</AssemblyName>
+    <RootNamespace>n3bOptimizations</RootNamespace>
+    <AssemblyName>n3bOptimizations</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <LangVersion>8</LangVersion>
@@ -86,11 +86,11 @@
   <ItemGroup>
     <Compile Include="GasTankThrottle.cs" />
     <Compile Include="Plugin.cs" />
-    <Compile Include="UserControl.xaml.cs">
-      <DependentUpon>UserControl.xaml</DependentUpon>
+    <Compile Include="PluginControl.xaml.cs">
+      <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Page Include="UserControl.xaml" />
+    <Page Include="PluginControl.xaml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

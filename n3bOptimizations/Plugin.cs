@@ -13,7 +13,7 @@ using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
 
-namespace n3b.TorchOptimizationsPlugin
+namespace n3bOptimizations
 {
     public class Plugin : TorchPluginBase, IWpfPlugin
     {
@@ -54,7 +54,7 @@ namespace n3b.TorchOptimizationsPlugin
         
         private void SetupConfig() {
 
-            var configFile = Path.Combine(StoragePath, "OptimizationsPluginConfig.cfg");
+            var configFile = Path.Combine(StoragePath, "n3bOptimizations.cfg");
 
             try {
                 _config = Persistent<PluginConfig>.Load(configFile);
@@ -102,11 +102,14 @@ namespace n3b.TorchOptimizationsPlugin
     
     public class PluginConfig : ViewModel {
 
-        private int threshold = 5;
+        private int threshold1 = 6;
+        private int threshold2 = 3;
         private int perTicks = 13;
         private int batches = 2;
         
-        public int Threshold { get => threshold; set => SetValue(ref threshold, Math.Max(Math.Min(value, 100), 1)); }
+        public int Threshold1 { get => threshold1; set => SetValue(ref threshold1, Math.Max(Math.Min(value, 100), (int) Threshold2 + 1)); }
+        public int Threshold2 { get => threshold2; set => SetValue(ref threshold2, Math.Max(Math.Min(value, Threshold1 - 1), 1)); }
+        
         public int PerTicks { get => perTicks; set => SetValue(ref perTicks, Math.Max(Math.Min(value, 60), 1)); }
         public int Batches { get => batches; set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1)); }
     }
