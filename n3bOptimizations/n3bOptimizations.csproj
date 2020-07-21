@@ -85,6 +85,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GasTankThrottle.cs" />
+    <Compile Include="IPatch.cs" />
+    <Compile Include="Patch\Inventory\InventoryProps.cs" />
+    <Compile Include="Patch\Inventory\InventoryStorage.cs" />
+    <Compile Include="Patch\Inventory\Patch.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>

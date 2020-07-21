@@ -29,6 +29,26 @@ namespace n3bOptimizations
             SetupConfig();
             var harmony = new Harmony("n3b.TorchOptimizationsPlugin");
             GasTankThrottle.Init(harmony, Config);
+            
+            var i = typeof(IPatch);
+            foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Contains(i)))
+            {
+#if !DEBUG
+                try
+                {
+#endif
+                var obj = (IPatch) Activator.CreateInstance(t);
+                obj.Inject(harmony);
+#if !DEBUG
+                    Log.Info($"{t.Name} applied");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"Unable to apply {t}");
+                }
+#endif
+            }
+
             torch.GameStateChanged += GameStateChanged;
             var manager = torch.Managers.GetManager<TorchSessionManager>();
             if (manager != null) manager.SessionStateChanged += SessionStateChanged;
