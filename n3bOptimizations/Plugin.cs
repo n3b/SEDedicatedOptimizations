@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Controls;
 using HarmonyLib;
+using n3b.SEMultiplayer;
 using NLog;
 using Sandbox;
 using Torch;
@@ -17,6 +18,8 @@ namespace n3bOptimizations
 {
     public class Plugin : TorchPluginBase, IWpfPlugin
     {
+        long channelId = 2171994463;
+
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         private Persistent<PluginConfig> _config;
         public PluginConfig Config => _config?.Data;
@@ -29,7 +32,7 @@ namespace n3bOptimizations
             SetupConfig();
             var harmony = new Harmony("n3b.TorchOptimizationsPlugin");
             GasTankThrottle.Init(harmony, Config);
-            
+
             var i = typeof(IPatch);
             foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Contains(i)))
             {
@@ -62,8 +65,8 @@ namespace n3bOptimizations
 
         void GameStateChanged(MySandboxGame game, TorchGameState state)
         {
-            if (state != TorchGameState.Creating) return;
-            // todo
+            if (state != TorchGameState.Created) return;
+            API.Register();
         }
 
         void SessionStateChanged(ITorchSession session, TorchSessionState newState)
@@ -71,28 +74,36 @@ namespace n3bOptimizations
             if (newState != TorchSessionState.Unloading) return;
             // todo
         }
-        
-        private void SetupConfig() {
 
+        private void SetupConfig()
+        {
             var configFile = Path.Combine(StoragePath, "n3bOptimizations.cfg");
 
-            try {
+            try
+            {
                 _config = Persistent<PluginConfig>.Load(configFile);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Log.Warn(e);
             }
 
-            if (_config?.Data == null) {
+            if (_config?.Data == null)
+            {
                 _config = new Persistent<PluginConfig>(configFile, new PluginConfig());
                 _config.Save();
             }
         }
-        
-        public void Save() {
-            try {
+
+        public void Save()
+        {
+            try
+            {
                 _config.Save();
                 Log.Info("Configuration Saved.");
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 Log.Warn(e, "Configuration failed to save");
             }
         }
@@ -113,24 +124,42 @@ namespace n3bOptimizations
             else
             {
                 getType = System.Linq.Expressions.Expression.GetFuncType;
-                types = types.Concat(new[] { methodInfo.ReturnType });
+                types = types.Concat(new[] {methodInfo.ReturnType});
             }
 
             return methodInfo.IsStatic ? Delegate.CreateDelegate(getType(types.ToArray()), methodInfo) : Delegate.CreateDelegate(getType(types.ToArray()), target, methodInfo.Name);
         }
     }
-    
-    public class PluginConfig : ViewModel {
 
+    public class PluginConfig : ViewModel
+    {
         private int threshold1 = 6;
         private int threshold2 = 3;
         private int perTicks = 13;
         private int batches = 2;
-        
-        public int Threshold1 { get => threshold1; set => SetValue(ref threshold1, Math.Max(Math.Min(value, 100), (int) Threshold2 + 1)); }
-        public int Threshold2 { get => threshold2; set => SetValue(ref threshold2, Math.Max(Math.Min(value, Threshold1 - 1), 1)); }
-        
-        public int PerTicks { get => perTicks; set => SetValue(ref perTicks, Math.Max(Math.Min(value, 60), 1)); }
-        public int Batches { get => batches; set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1)); }
+
+        public int Threshold1
+        {
+            get => threshold1;
+            set => SetValue(ref threshold1, Math.Max(Math.Min(value, 100), (int) Threshold2 + 1));
+        }
+
+        public int Threshold2
+        {
+            get => threshold2;
+            set => SetValue(ref threshold2, Math.Max(Math.Min(value, Threshold1 - 1), 1));
+        }
+
+        public int PerTicks
+        {
+            get => perTicks;
+            set => SetValue(ref perTicks, Math.Max(Math.Min(value, 60), 1));
+        }
+
+        public int Batches
+        {
+            get => batches;
+            set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1));
+        }
     }
 }
