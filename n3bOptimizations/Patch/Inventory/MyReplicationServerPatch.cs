@@ -66,8 +66,8 @@ namespace n3bOptimizations.Patch.Inventory
 
         public static void OnDestroy(MyExternalReplicable replicable)
         {
-            if (!(replicable is MyExternalReplicable<MyInventory>)) return;
-            var inv = (replicable as MyExternalReplicable<MyInventory>).Instance;
+            if (!(replicable is MyExternalReplicable<MyInventory> rep)) return;
+            var inv = rep.Instance;
             if (inv == null) return;
             _replicables.TryRemove(inv, out var i);
         }
@@ -82,17 +82,17 @@ namespace n3bOptimizations.Patch.Inventory
 
         public static bool ScheduleStateGroupSyncPrefix(object client, MyStateDataEntry groupEntry)
         {
-            if (!(groupEntry.Owner is MyExternalReplicable<MyInventory>)) return true;
+            if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
             var state = (MyClientStateBase) _stateInfo.GetValue(client);
-            return state.IsSubscribedToInventory(((MyExternalReplicable<MyInventory>) groupEntry.Owner).Instance);
+            return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
         }
 
         public static bool ShouldSendEventPrefix(IMyNetObject eventInstance, object client)
         {
-            if ((eventInstance is MyExternalReplicable<MyInventory>))
+            if (eventInstance is MyExternalReplicable<MyInventory> rep)
             {
                 var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                return state.IsSubscribedToInventory(((MyExternalReplicable<MyInventory>) eventInstance).Instance);
+                return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
             }
 
             return true;
@@ -103,16 +103,15 @@ namespace n3bOptimizations.Patch.Inventory
             MyClientStateBaseExtension.RemoveEndpoint(endpoint.Id);
         }
 
+#if DEBUG
         static Dictionary<string, int> calls = new Dictionary<string, int>();
         static Dictionary<string, string> targets = new Dictionary<string, string>();
         private static long last = 0;
+#endif
 
         public static bool DispatchEventPatch(CallSite site, IMyNetObject eventInstance)
         {
-            // if (site.MethodInfo.Name == "OnRemoveQueueItem") return false;
-            // if (site.MethodInfo.Name == "OnRemoveQueueItemRequest") return false;
-
-
+#if DEBUG
             if (!calls.ContainsKey(site.MethodInfo.Name)) calls.Add(site.MethodInfo.Name, 0);
             calls[site.MethodInfo.Name]++;
             targets[site.MethodInfo.Name] = eventInstance?.GetType().Name ?? "x";
@@ -128,6 +127,8 @@ namespace n3bOptimizations.Patch.Inventory
             Plugin.Log.Info($"----------------------------------------");
             calls.Clear();
             targets.Clear();
+#endif
+
             return true;
         }
     }

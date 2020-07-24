@@ -23,16 +23,15 @@ namespace n3bOptimizations.Patch.Inventory
         public static void SubscribeInventory(this MyClientStateBase state, MyInventoryBase inventory)
         {
             var inventories = subscriptions.GetOrAdd(state.EndpointId.Id, new ConcurrentHashSet<MyInventory>());
-            if (inventory is MyInventoryAggregate)
-                foreach (MyInventory i in (inventory as MyInventoryAggregate).ChildList.Reader)
+            if (inventory is MyInventoryAggregate agg)
+                foreach (MyInventory i in agg.ChildList.Reader)
                 {
                     if (i == null) continue;
                     inventories.Add(i);
                     MyReplicationServerPatch.RefreshInventory(i);
                 }
-            else if (inventory is MyInventory)
+            else if (inventory is MyInventory i && i != null)
             {
-                var i = (MyInventory) inventory;
                 inventories.Add(i);
                 MyReplicationServerPatch.RefreshInventory(i);
             }
@@ -41,13 +40,13 @@ namespace n3bOptimizations.Patch.Inventory
         public static void UnsubscribeInventory(this MyClientStateBase state, MyInventoryBase inventory)
         {
             if (!subscriptions.TryGetValue(state.EndpointId.Id, out var inventories)) return;
-            if (inventory is MyInventoryAggregate)
-                foreach (MyInventory i in (inventory as MyInventoryAggregate).ChildList.Reader)
+            if (inventory is MyInventoryAggregate agg)
+                foreach (MyInventory i in agg.ChildList.Reader)
                 {
                     if (i != null) inventories.TryRemove(i);
                 }
-            else if (inventory is MyInventory && inventory != null)
-                inventories.TryRemove(inventory as MyInventory);
+            else if (inventory is MyInventory i && i != null)
+                inventories.TryRemove(i);
         }
 
         public static void ClearInventorySubscriptions(this MyClientStateBase state)
