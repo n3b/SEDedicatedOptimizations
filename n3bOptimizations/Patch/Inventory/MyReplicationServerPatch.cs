@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.Game.Replication;
 using Sandbox.Game.Replication.StateGroups;
 using VRage;
@@ -18,6 +19,7 @@ namespace n3bOptimizations.Patch.Inventory
 
         private static Type TerminalReplicableType = typeof(MyInventory).Assembly.GetType("Sandbox.Game.Replication.MyTerminalReplicable");
         private static Type InventoryReplicableType = typeof(MyInventory).Assembly.GetType("Sandbox.Game.Replication.MyInventoryReplicable");
+        private static Type MyEntityInventoryStateGroup = typeof(MyInventory).Assembly.GetType("Sandbox.Game.Replication.StateGroups.MyEntityInventoryStateGroup");
 
         private static ConcurrentDictionary<MyInventory, MyExternalReplicable<MyInventory>> _replicables =
             new ConcurrentDictionary<MyInventory, MyExternalReplicable<MyInventory>>();
@@ -46,15 +48,16 @@ namespace n3bOptimizations.Patch.Inventory
 
             source = AccessTools.Method(typeof(MyReplicationServer), "DispatchEvent",
                 new[] {typeof(IPacketData), typeof(CallSite), typeof(EndpointId), typeof(IMyNetObject), typeof(Vector3D?)});
-            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "DispatchEventPatch");
+            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "DispatchEventPrefix");
+            harmony.Patch(source, new HarmonyMethod(patch));
+
+            source = AccessTools.Method(typeof(MyReplicationServer), "DispatchBlockingEvent");
+            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "DispatchBlockingEventPrefix");
             harmony.Patch(source, new HarmonyMethod(patch));
 
             source = AccessTools.Method(InventoryReplicableType, "OnHook");
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "OnHookPatch");
             harmony.Patch(source, null, new HarmonyMethod(patch));
-
-            // source = AccessTools.Method(typeof(MyReplicationServer), "DispatchBlockingEvent");
-            // harmony.Patch(source, new HarmonyMethod(patch));
         }
 
         public static void OnHookPatch(ref MyExternalReplicable<MyInventory> __instance)
@@ -75,7 +78,9 @@ namespace n3bOptimizations.Patch.Inventory
         public static void RefreshInventory(MyInventory inventory)
         {
             if (!_replicables.TryGetValue(inventory, out var replicable)) return;
-            (propSync.GetValue(replicable) as MyPropertySyncStateGroup)?.MarkDirty();
+
+            // (propSync.GetValue(replicable) as MyPropertySyncStateGroup)?.MarkDirty();
+
             var state = invState.GetValue(replicable);
             if (state != null) markDirtyState.Invoke(state, new[] {inventory});
         }
@@ -83,8 +88,17 @@ namespace n3bOptimizations.Patch.Inventory
         public static bool ScheduleStateGroupSyncPrefix(object client, MyStateDataEntry groupEntry)
         {
             if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
+
+            if (groupEntry.Group is MyPropertySyncStateGroup gr)
+            {
+                // don't send mass/volume updates for stations, they are ignored in physics anyway (if i'm not wrong meh)
+                if (rep.Instance.Owner is MyCubeBlock block && block?.CubeGrid?.IsStatic == true) return false;
+                return true;
+            }
+
             var state = (MyClientStateBase) _stateInfo.GetValue(client);
-            return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
+            if (!state.IsEnabledAPI()) return true;
+            return state.IsSubscribedToInventory(rep.Instance);
         }
 
         public static bool ShouldSendEventPrefix(IMyNetObject eventInstance, object client)
@@ -107,15 +121,37 @@ namespace n3bOptimizations.Patch.Inventory
         static Dictionary<string, int> calls = new Dictionary<string, int>();
         static Dictionary<string, string> targets = new Dictionary<string, string>();
         private static long last = 0;
+        private static long last2 = 0;
 #endif
 
-        public static bool DispatchEventPatch(CallSite site, IMyNetObject eventInstance)
+        public static void DispatchBlockingEventPrefix(CallSite site, IMyNetObject targetReplicable)
+        {
+#if DEBUG
+            if (!calls.ContainsKey(site.MethodInfo.Name)) calls.Add(site.MethodInfo.Name, 0);
+            calls[site.MethodInfo.Name]++;
+            targets[site.MethodInfo.Name] = targetReplicable?.GetType().Name ?? "x";
+            if (last2 > DateTimeOffset.Now.ToUnixTimeSeconds() - 5) return;
+            last2 = DateTimeOffset.Now.ToUnixTimeSeconds();
+            foreach (var k in calls.Keys)
+                Plugin.Log.Info($"called method {k} {calls[k]} times");
+            Plugin.Log.Info($"---------------");
+
+            foreach (var k in targets.Keys)
+                Plugin.Log.Info($"{k} {targets[k]}");
+
+            Plugin.Log.Info($"----------------------------------------");
+            calls.Clear();
+            targets.Clear();
+#endif
+        }
+
+        public static void DispatchEventPrefix(CallSite site, IMyNetObject eventInstance)
         {
 #if DEBUG
             if (!calls.ContainsKey(site.MethodInfo.Name)) calls.Add(site.MethodInfo.Name, 0);
             calls[site.MethodInfo.Name]++;
             targets[site.MethodInfo.Name] = eventInstance?.GetType().Name ?? "x";
-            if (last > DateTimeOffset.Now.ToUnixTimeSeconds() - 5) return true;
+            if (last > DateTimeOffset.Now.ToUnixTimeSeconds() - 5) return;
             last = DateTimeOffset.Now.ToUnixTimeSeconds();
             foreach (var k in calls.Keys)
                 Plugin.Log.Info($"called method {k} {calls[k]} times");
@@ -128,8 +164,6 @@ namespace n3bOptimizations.Patch.Inventory
             calls.Clear();
             targets.Clear();
 #endif
-
-            return true;
         }
     }
 }

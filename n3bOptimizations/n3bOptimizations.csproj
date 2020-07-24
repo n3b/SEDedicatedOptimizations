@@ -93,10 +93,12 @@
       <Reference Include="WindowsBase"/>
   </ItemGroup>
     <ItemGroup>
-        <Compile Include="GasTankThrottle.cs"/>
         <Compile Include="IPatch.cs"/>
         <Compile Include="Multiplayer\API.cs"/>
         <Compile Include="Multiplayer\Contracts.cs"/>
+        <Compile Include="Patch\GasTank\GasTankLogicComponent.cs"/>
+        <Compile Include="Patch\GasTank\GasTankThrottle.cs"/>
+        <Compile Include="Patch\GasTank\UpdateWork.cs"/>
         <Compile Include="Patch\Inventory\MyClientStateBaseExtension.cs"/>
         <Compile Include="Patch\Inventory\MyReplicationServerPatch.cs"/>
         <Compile Include="Patch\Inventory\MyProductionBLockPatch.cs"/>
