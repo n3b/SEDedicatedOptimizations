@@ -26,6 +26,9 @@ namespace n3b.SEMultiplayer
             {
                 state.SetEnabledAPI(enabled);
                 MyModAPIHelper.MyMultiplayer.Static.SendMessageTo(_channel, _magicString, state.EndpointId.Id.Value, true);
+#if DEBUG
+                Plugin.Log.Warn("got magic message");
+#endif
             }
             else Plugin.Log.Warn("Got unexpected data from client");
 
@@ -43,24 +46,31 @@ namespace n3b.SEMultiplayer
 
             if (!state.IsEnabledAPI() && !CheckEnabled(msg, state)) return;
 
-            state.ClearInventorySubscriptions();
             IProtoSerializable o;
-
             try
             {
-                o = ProtoMessage.Unserialize(msg);
+                switch (ProtoMessage.Unserialize(msg))
+                {
+                    case SubscribeInventories s:
+                        SubscribeInventories(state, s);
+                        break;
+                }
             }
             catch (Exception e)
             {
                 Plugin.Log.Error(e);
                 return;
             }
-
-            if (o is SubscribeInventories) SubscribeInventories(state, (SubscribeInventories) o);
         }
 
         static void SubscribeInventories(MyClientStateBase state, SubscribeInventories msg)
         {
+#if DEBUG
+            Plugin.Log.Warn($"Got inventories subscribe {msg.EntityId?.Length ?? 0}");
+#endif
+            state.ClearInventorySubscriptions();
+            if (msg.EntityId == null) return;
+
             foreach (var entityId in msg.EntityId)
             {
                 try
@@ -76,8 +86,7 @@ namespace n3b.SEMultiplayer
                     for (int i2 = 0; i2 < entity.InventoryCount; i2++)
                     {
                         var inv = entity.GetInventory(i2);
-                        // Plugin.Log.Warn($">>> subscribing {entity.Name} {inv.InventoryId}");
-                        state?.SubscribeInventory(inv);
+                        if (inv != null) state.SubscribeInventory(inv);
                     }
                 }
                 catch (Exception e)

@@ -24,7 +24,7 @@ namespace n3b.SEMultiplayer
 
     public abstract class ProtoMessage
     {
-        public static Dictionary<ushort, MethodInfo> unserializers = new Dictionary<ushort, MethodInfo>();
+        public static Dictionary<ushort, Tuple<MethodInfo, MethodInfo>> map = new Dictionary<ushort, Tuple<MethodInfo, MethodInfo>>();
 
         static ProtoMessage()
         {
@@ -32,23 +32,25 @@ namespace n3b.SEMultiplayer
             {
                 var id = (ProtoId) t.GetCustomAttribute(typeof(ProtoId));
                 if (id == null) continue;
-                unserializers[id.id] = typeof(ProtoMessage).GetMethod("Unserialize", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(t);
+                map[id.id] = new Tuple<MethodInfo, MethodInfo>(typeof(ProtoMessage).GetMethod("Serialize", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(t),
+                    typeof(ProtoMessage).GetMethod("Unserialize", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(t));
             }
         }
 
         public static byte[] Serialize(IProtoSerializable o)
         {
             var type = o.GetType();
-            var attr = (ProtoId) type.GetCustomAttribute(typeof(ProtoId));
-            var msg = Serialize(o);
-            return BitConverter.GetBytes(attr.id).Concat(msg).ToArray();
+            var id = (ProtoId) type.GetCustomAttribute(typeof(ProtoId));
+            if (!map.ContainsKey(id.id)) throw new ConstraintException($"Type with id {id} doesn't exist");
+            var msg = (byte[]) map[id.id].Item1.Invoke(null, new object[] {o});
+            return BitConverter.GetBytes(id.id).Concat(msg).ToArray();
         }
 
         public static IProtoSerializable Unserialize(byte[] msg)
         {
             var id = BitConverter.ToUInt16(msg, 0);
-            if (!unserializers.ContainsKey(id)) throw new ConstraintException($"Type with id {id} doesn't exist");
-            return (IProtoSerializable) unserializers[id].Invoke(null, new object[] {msg.Skip(2).ToArray()});
+            if (!map.ContainsKey(id)) throw new ConstraintException($"Type with id {id} doesn't exist");
+            return (IProtoSerializable) map[id].Item2.Invoke(null, new object[] {msg.Skip(2).ToArray()});
         }
 
         static byte[] Serialize<T>(T o)
