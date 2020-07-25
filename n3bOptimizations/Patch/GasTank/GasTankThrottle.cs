@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using HarmonyLib;
 using n3bOptimizations.Patch.GasTank;
 using ParallelTasks;
@@ -29,11 +30,12 @@ namespace n3bOptimizations
             // dispatch immediately
             if (oldRatio > newFilledRatio && newFilledRatio < threshold1 && newFilledRatio * 2 - oldRatio < threshold2)
             {
-                UpdateWork.tanksUpdated.TryRemove(__instance, out var v);
+                UpdateWork.tanksUpdated.TryRemove(__instance.GetHashCode(), out var tupleDispose);
                 return true;
             }
 
-            UpdateWork.tanksUpdated.AddOrUpdate(__instance, newFilledRatio, (key, old) => newFilledRatio);
+            var tuple = new Tuple<MyGasTank, double>(__instance, newFilledRatio);
+            UpdateWork.tanksUpdated.AddOrUpdate(__instance.GetHashCode(), tuple, (key, old) => tuple);
             return false;
         }
 

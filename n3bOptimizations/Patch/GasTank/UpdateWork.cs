@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using NLog;
+using System.Linq;
 using ParallelTasks;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game.Entities.Blocks;
@@ -9,20 +9,27 @@ namespace n3bOptimizations.Patch.GasTank
 {
     public static class UpdateWork
     {
-        public static ConcurrentDictionary<MyGasTank, double> tanksUpdated = new ConcurrentDictionary<MyGasTank, double>();
-
-        public static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        public static ConcurrentDictionary<int, Tuple<MyGasTank, double>> tanksUpdated = new ConcurrentDictionary<int, Tuple<MyGasTank, double>>();
 
         public static void DoWork(WorkData wd)
         {
-            var bucket = (wd as UpdateWorkData).bucket;
-            foreach (var tank in tanksUpdated.Keys)
+            var data = (UpdateWorkData) wd;
+            if (data == null) return;
+            foreach (var hash in tanksUpdated.Keys.ToArray())
             {
-                if ((tank.GetHashCode() & int.MaxValue) % GasTankThrottle.buckets != 0) continue;
-                tanksUpdated.TryRemove(tank, out var amount);
-                Func<MyGasTank, Action<double>> fn = (MyGasTank x) =>
-                    (Action<double>) GasTankThrottle.cb.CreateDelegate(typeof(Action<double>), x);
-                MyMultiplayer.RaiseEvent<MyGasTank, double>(tank, fn, amount);
+                try
+                {
+                    if ((hash & int.MaxValue) % data.bucket != 0) continue;
+                    tanksUpdated.TryRemove(hash, out var tuple);
+                    if (tuple == null || tuple.Item1 == null) continue;
+
+                    Func<MyGasTank, Action<double>> fn = (MyGasTank x) => (Action<double>) GasTankThrottle.cb.CreateDelegate(typeof(Action<double>), x);
+                    MyMultiplayer.RaiseEvent<MyGasTank, double>(tuple.Item1, fn, tuple.Item2);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
             }
         }
 

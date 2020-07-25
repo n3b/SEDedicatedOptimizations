@@ -11,7 +11,7 @@ namespace n3bOptimizations.Patch.GasTank
         {
             var instance = Entity as MyGasTank;
             if (instance == null) return;
-            UpdateWork.tanksUpdated.TryRemove(instance, out var tuple);
+            UpdateWork.tanksUpdated.TryRemove(instance.GetHashCode(), out var tuple);
             base.Close();
         }
     }
