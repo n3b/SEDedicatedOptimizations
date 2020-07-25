@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Replication;
 using Sandbox.Game.Replication.StateGroups;
-using VRage;
 using VRage.Network;
-using VRageMath;
 
 namespace n3bOptimizations.Patch.Inventory
 {
@@ -46,6 +43,11 @@ namespace n3bOptimizations.Patch.Inventory
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "RemoveClientPrefix");
             harmony.Patch(source, new HarmonyMethod(patch));
 
+            source = AccessTools.Method(InventoryReplicableType, "OnHook");
+            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "OnHookPatch");
+            harmony.Patch(source, null, new HarmonyMethod(patch));
+
+#if DEBUG
             source = AccessTools.Method(typeof(MyReplicationServer), "DispatchEvent",
                 new[] {typeof(IPacketData), typeof(CallSite), typeof(EndpointId), typeof(IMyNetObject), typeof(Vector3D?)});
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "DispatchEventPrefix");
@@ -54,10 +56,7 @@ namespace n3bOptimizations.Patch.Inventory
             source = AccessTools.Method(typeof(MyReplicationServer), "DispatchBlockingEvent");
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "DispatchBlockingEventPrefix");
             harmony.Patch(source, new HarmonyMethod(patch));
-
-            source = AccessTools.Method(InventoryReplicableType, "OnHook");
-            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "OnHookPatch");
-            harmony.Patch(source, null, new HarmonyMethod(patch));
+#endif
         }
 
         public static void OnHookPatch(ref MyExternalReplicable<MyInventory> __instance)
@@ -77,36 +76,57 @@ namespace n3bOptimizations.Patch.Inventory
 
         public static void RefreshInventory(MyInventory inventory)
         {
-            if (!_replicables.TryGetValue(inventory, out var replicable)) return;
+            try
+            {
+                if (!_replicables.TryGetValue(inventory, out var replicable)) return;
 
-            // (propSync.GetValue(replicable) as MyPropertySyncStateGroup)?.MarkDirty();
-
-            var state = invState.GetValue(replicable);
-            if (state != null) markDirtyState.Invoke(state, new[] {inventory});
+                // (propSync.GetValue(replicable) as MyPropertySyncStateGroup)?.MarkDirty();
+                var state = invState.GetValue(replicable);
+                if (state != null) markDirtyState.Invoke(state, new[] {inventory});
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         public static bool ScheduleStateGroupSyncPrefix(object client, MyStateDataEntry groupEntry)
         {
-            if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
-
-            if (groupEntry.Group is MyPropertySyncStateGroup gr)
+            try
             {
-                // don't send mass/volume updates for stations, they are ignored in physics anyway (if i'm not wrong meh)
-                if (rep.Instance.Owner is MyCubeBlock block && block?.CubeGrid?.IsStatic == true) return false;
+                if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
+
+                if (groupEntry.Group is MyPropertySyncStateGroup gr)
+                {
+                    // don't send mass/volume updates for stations, they are ignored in physics anyway (if i'm not wrong meh)
+                    if (rep.Instance.Owner is MyCubeBlock block && block?.CubeGrid?.IsStatic == true) return false;
+                    return true;
+                }
+
+                var state = (MyClientStateBase) _stateInfo.GetValue(client);
+                if (!state.IsEnabledAPI()) return true;
+                return state.IsSubscribedToInventory(rep.Instance);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
                 return true;
             }
-
-            var state = (MyClientStateBase) _stateInfo.GetValue(client);
-            if (!state.IsEnabledAPI()) return true;
-            return state.IsSubscribedToInventory(rep.Instance);
         }
 
         public static bool ShouldSendEventPrefix(IMyNetObject eventInstance, object client)
         {
-            if (eventInstance is MyExternalReplicable<MyInventory> rep)
+            try
             {
-                var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
+                if (eventInstance is MyExternalReplicable<MyInventory> rep)
+                {
+                    var state = (MyClientStateBase) _stateInfo.GetValue(client);
+                    return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
             }
 
             return true;

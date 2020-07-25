@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using n3bOptimizations.Util;
 using Sandbox.Game;
 using Sandbox.Game.Entities.Inventory;
@@ -22,31 +23,45 @@ namespace n3bOptimizations.Patch.Inventory
 
         public static void SubscribeInventory(this MyClientStateBase state, MyInventoryBase inventory)
         {
-            var inventories = subscriptions.GetOrAdd(state.EndpointId.Id, new ConcurrentHashSet<MyInventory>());
-            if (inventory is MyInventoryAggregate agg)
-                foreach (MyInventory i in agg.ChildList.Reader)
+            try
+            {
+                var inventories = subscriptions.GetOrAdd(state.EndpointId.Id, new ConcurrentHashSet<MyInventory>());
+                if (inventory is MyInventoryAggregate agg)
+                    foreach (MyInventory i in agg.ChildList.Reader)
+                    {
+                        if (i == null) continue;
+                        inventories.Add(i);
+                        MyReplicationServerPatch.RefreshInventory(i);
+                    }
+                else if (inventory is MyInventory i && i != null)
                 {
-                    if (i == null) continue;
                     inventories.Add(i);
                     MyReplicationServerPatch.RefreshInventory(i);
                 }
-            else if (inventory is MyInventory i && i != null)
+            }
+            catch (Exception e)
             {
-                inventories.Add(i);
-                MyReplicationServerPatch.RefreshInventory(i);
+                Plugin.Log.Error(e);
             }
         }
 
         public static void UnsubscribeInventory(this MyClientStateBase state, MyInventoryBase inventory)
         {
-            if (!subscriptions.TryGetValue(state.EndpointId.Id, out var inventories)) return;
-            if (inventory is MyInventoryAggregate agg)
-                foreach (MyInventory i in agg.ChildList.Reader)
-                {
-                    if (i != null) inventories.TryRemove(i);
-                }
-            else if (inventory is MyInventory i && i != null)
-                inventories.TryRemove(i);
+            try
+            {
+                if (!subscriptions.TryGetValue(state.EndpointId.Id, out var inventories)) return;
+                if (inventory is MyInventoryAggregate agg)
+                    foreach (MyInventory i in agg.ChildList.Reader)
+                    {
+                        if (i != null) inventories.TryRemove(i);
+                    }
+                else if (inventory is MyInventory i && i != null)
+                    inventories.TryRemove(i);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         public static void ClearInventorySubscriptions(this MyClientStateBase state)
