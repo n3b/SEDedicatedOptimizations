@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Windows.Threading;
+using System.Timers;
 
 namespace SEClientFixes.Util
 {
@@ -14,9 +14,9 @@ namespace SEClientFixes.Util
     /// in which no other pending event has fired. Only the last event in the
     /// sequence is fired.
     /// </summary>
-    public class DebounceDispatcher
+    public class TimerUtil
     {
-        private DispatcherTimer timer;
+        private Timer timer;
         private DateTime timerStarted { get; set; } = DateTime.UtcNow.AddYears(-1);
         private Action<object> lastAction;
         private object _lock = new object();
@@ -35,35 +35,28 @@ namespace SEClientFixes.Util
         /// </summary>
         /// <param name="interval">Timeout in Milliseconds</param>
         /// <param name="action">Action<object> to fire when debounced event fires</object></param>
-        /// <param name="param">optional parameter</param>
-        /// <param name="priority">optional priorty for the dispatcher</param>
-        /// <param name="disp">optional dispatcher. If not passed or null CurrentDispatcher is used.</param>        
-        public void Debounce(int interval, Action<object> action,
-            object param = null,
-            DispatcherPriority priority = DispatcherPriority.ApplicationIdle,
-            Dispatcher disp = null)
+        /// <param name="param">optional parameter</param>    
+        public void Debounce(int interval, Action<object> action, object param = null)
         {
-            // kill pending timer and pending ticks
-            timer?.Stop();
-            timer = null;
-
-            if (disp == null)
-                disp = Dispatcher.CurrentDispatcher;
-
-            // timer is recreated for each event and effectively
-            // resets the timeout. Action only fires after timeout has fully
-            // elapsed without other events firing in between
-            timer = new DispatcherTimer(TimeSpan.FromMilliseconds(interval), priority, (s, e) =>
+            lock (_lock)
             {
-                if (timer == null)
-                    return;
-
                 timer?.Stop();
                 timer = null;
-                action.Invoke(param);
-            }, disp);
+                timer = new Timer(interval);
+                timer.Elapsed += (s, e) =>
+                {
+                    lock (_lock)
+                    {
+                        if (timer == null) return;
+                        timer.Stop();
+                        timer = null;
+                    }
 
-            timer.Start();
+                    action?.Invoke(param);
+                };
+
+                timer.Start();
+            }
         }
 
         /// <summary>
@@ -76,38 +69,33 @@ namespace SEClientFixes.Util
         /// <param name="interval">Timeout in Milliseconds</param>
         /// <param name="action">Action<object> to fire when debounced event fires</object></param>
         /// <param name="param">optional parameter</param>
-        /// <param name="priority">optional priorty for the dispatcher</param>
-        /// <param name="disp">optional dispatcher. If not passed or null CurrentDispatcher is used.</param>
-        public void Throttle(int interval, Action<object> action,
-            object param = null,
-            DispatcherPriority priority = DispatcherPriority.ApplicationIdle,
-            Dispatcher disp = null)
+        public bool Throttle(int interval, Action<object> action, object param = null)
         {
             lock (_lock)
             {
-                if (disp == null) disp = Dispatcher.CurrentDispatcher;
                 var curTime = DateTime.UtcNow;
                 lastAction = action;
-                if (curTime.Subtract(timerStarted).TotalMilliseconds <= interval + 100) return;
-                Console.WriteLine("set new timer");
-                timer = new DispatcherTimer(TimeSpan.FromMilliseconds(interval - 500), priority, (s, e) =>
+                if (timer != null) return false;
+
+                timer = new Timer(interval);
+                timer.Elapsed += (s, e) =>
                 {
-                    Console.WriteLine("timer fired");
                     Action<object> _action;
                     lock (_lock)
                     {
                         if (timer == null) return;
                         _action = lastAction;
                         lastAction = null;
-                        timer?.Stop();
+                        timer.Stop();
                         timer = null;
                     }
 
                     _action?.Invoke(param);
-                }, disp);
+                };
 
                 timer.Start();
                 timerStarted = curTime;
+                return true;
             }
         }
     }

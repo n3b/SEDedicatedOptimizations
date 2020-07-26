@@ -6,7 +6,6 @@ using HarmonyLib;
 using n3b.SEMultiplayer;
 using Sandbox.Game;
 using Sandbox.Game.Replication;
-using Sandbox.Game.Replication.StateGroups;
 using VRage;
 using VRage.Network;
 using VRageMath;
@@ -27,7 +26,8 @@ namespace n3bOptimizations.Patch.Inventory
         private static FieldInfo invState = AccessTools.Field(InventoryReplicableType, "m_stateGroup");
         private static FieldInfo propSync = AccessTools.Field(InventoryReplicableType, "m_propertySync");
 
-        private static MethodInfo markDirtyState = AccessTools.Method(InventoryReplicableType.Assembly.GetType("Sandbox.Game.Replication.StateGroups.MyEntityInventoryStateGroup"),
+        public static readonly MethodInfo markDirtyState = AccessTools.Method(
+            InventoryReplicableType.Assembly.GetType("Sandbox.Game.Replication.StateGroups.MyEntityInventoryStateGroup"),
             "InventoryChanged");
 
         public void Inject(Harmony harmony)
@@ -82,7 +82,7 @@ namespace n3bOptimizations.Patch.Inventory
             try
             {
                 if (!_replicables.TryGetValue(inventory, out var replicable)) return;
-                (propSync.GetValue(replicable) as MyPropertySyncStateGroup).MarkDirty();
+                // (propSync.GetValue(replicable) as MyPropertySyncStateGroup).MarkDirty();
                 var state = invState.GetValue(replicable);
                 if (state != null) markDirtyState.Invoke(state, new[] {inventory});
             }
@@ -99,7 +99,7 @@ namespace n3bOptimizations.Patch.Inventory
                 if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
 
                 var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                return state.Companion().ScheduleInventoryUpdate(rep.Instance);
+                return state.Companion().ScheduleInventoryUpdate(groupEntry);
             }
             catch (Exception e)
             {

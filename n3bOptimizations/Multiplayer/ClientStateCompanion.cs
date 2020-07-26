@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using n3bOptimizations;
 using n3bOptimizations.Patch.Inventory;
 using n3bOptimizations.Util;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Inventory;
+using Sandbox.Game.Replication;
+using Sandbox.Game.Replication.StateGroups;
 using SEClientFixes.Util;
 using VRage.Game.Entity;
 using VRage.Network;
@@ -84,36 +85,61 @@ namespace n3b.SEMultiplayer
         }
 
 
-        private HashSet<MyInventory> _scheduledForUpdate = new HashSet<MyInventory>();
-        private HashSet<MyInventory> _markedForUpdate = new HashSet<MyInventory>();
+        private ConcurrentDictionary<MyStateDataEntry, double> updated = new ConcurrentDictionary<MyStateDataEntry, double>();
+        private TimerUtil timer = new TimerUtil();
 
-        // TODO timer doesn't work, check it later
-        private DebounceDispatcher _inventoryUpdates = new DebounceDispatcher();
-        private double _lastTrigger = DateTime.UtcNow.TimeOfDay.TotalMilliseconds;
-
-        public bool ScheduleInventoryUpdate(MyInventory inventory)
+        public bool ScheduleInventoryUpdate(MyStateDataEntry entry)
         {
-            if (!(inventory.Entity is MyCubeBlock block)) return true;
-            if (block?.CubeGrid.IsStatic != true) return IsSubscribedToInventory(inventory);
-            if (_markedForUpdate.Remove(inventory)) return true;
-            var ms = DateTime.UtcNow.TimeOfDay.TotalMilliseconds;
-            if (ms - _lastTrigger < Plugin.StaticConfig.InventoryThrottle)
+            var rep = (MyExternalReplicable<MyInventory>) entry.Owner;
+            if (!(rep.Instance.Entity is MyCubeBlock block)) return true;
+            if (block?.CubeGrid.IsStatic != true) return IsSubscribedToInventory(rep.Instance);
+
+            // when marked dirty first time, update immediately, otherwise schedule for later
+
+            var cur = DateTimeOffset.UtcNow.TimeOfDay.TotalMilliseconds;
+            if (!updated.TryGetValue(entry, out var lastUpdated))
             {
-                _scheduledForUpdate.Add(inventory);
-                return false;
+                updated.TryAdd(entry, cur);
+                return true;
             }
 
-            _lastTrigger = ms;
-            var old = _scheduledForUpdate;
-            _scheduledForUpdate = new HashSet<MyInventory>();
-
-            foreach (var i in old)
+            if (cur - lastUpdated > Plugin.StaticConfig.InventoryThrottle)
             {
-                _markedForUpdate.Add(i);
-                MyReplicationServerPatch.RefreshInventory(i);
+                updated.TryRemove(entry, out var deleted);
+                return true;
             }
 
+            timer.Throttle(Plugin.StaticConfig.InventoryThrottle, HandleThrottledUpdate);
             return false;
+        }
+
+        void HandleThrottledUpdate(object param)
+        {
+            foreach (var i in updated.Keys)
+            {
+                try
+                {
+                    var group = i?.Group;
+                    switch (group)
+                    {
+                        case null:
+                            continue;
+                        case MyPropertySyncStateGroup gr:
+                            gr.MarkDirty();
+                            break;
+                        default:
+                        {
+                            if (i?.Owner is MyExternalReplicable<MyInventory> o && o?.Instance != null)
+                                MyReplicationServerPatch.markDirtyState.Invoke(@group, new object[] {o.Instance});
+                            break;
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
+            }
         }
     }
 }
