@@ -24,7 +24,7 @@ namespace n3b.SEMultiplayer
             var enabled = _magicString.SequenceEqual(msg);
             if (enabled)
             {
-                state.SetEnabledAPI(enabled);
+                state.Companion().APIEnabled = true;
                 MyModAPIHelper.MyMultiplayer.Static.SendMessageTo(_channel, _magicString, state.EndpointId.Id.Value, true);
 #if DEBUG
                 Plugin.Log.Warn("got magic message");
@@ -44,7 +44,7 @@ namespace n3b.SEMultiplayer
                 return;
             }
 
-            if (!state.IsEnabledAPI() && !CheckEnabled(msg, state)) return;
+            if (!state.Companion().APIEnabled && !CheckEnabled(msg, state)) return;
 
             IProtoSerializable o;
             try
@@ -68,7 +68,7 @@ namespace n3b.SEMultiplayer
 #if DEBUG
             Plugin.Log.Warn($"Got inventories subscribe {msg.EntityId?.Length ?? 0}");
 #endif
-            state.ClearInventorySubscriptions();
+            state.Companion().ClearInventorySubscriptions();
             if (msg.EntityId == null) return;
 
             foreach (var entityId in msg.EntityId)
@@ -86,7 +86,7 @@ namespace n3b.SEMultiplayer
                     for (int i2 = 0; i2 < entity.InventoryCount; i2++)
                     {
                         var inv = entity.GetInventory(i2);
-                        if (inv != null) state.SubscribeInventory(inv);
+                        if (inv != null) state.Companion().SubscribeInventory(inv);
                     }
                 }
                 catch (Exception e)

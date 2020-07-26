@@ -20,6 +20,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Column="0" Grid.Row ="0" VerticalAlignment="Center" Text="Optimizations Plugin" FontWeight="Bold" FontSize="16" Grid.ColumnSpan="2" Margin="5"/>
@@ -27,20 +29,27 @@
         <TextBlock Grid.Column="0" Grid.Row ="1" VerticalAlignment="Center" Text="Gas Tanks" FontWeight="Medium" FontSize="14" Grid.ColumnSpan="2" Margin="5"/>
 
         <TextBlock Grid.Column="0" Grid.Row ="2" VerticalAlignment="Center" Text="Send batch update every" Margin="5"/>
-        <TextBox Name="PerTicks" Grid.Column="1" Grid.Row ="2" Grid.ColumnSpan="1" Margin="5" Text="{Binding PerTicks}" Width="30" />
+        <TextBox Name="PerTicks" Grid.Column="1" Grid.Row ="2" Margin="5" Text="{Binding PerTicks}" Width="30" />
         <TextBlock Grid.Column="2" Grid.Row ="2" VerticalAlignment="Center" Text="ticks" Margin="5"/>
 
         <TextBlock Grid.Column="0" Grid.Row ="3" VerticalAlignment="Center" Text="Total batches" Margin="5"/>
-        <TextBox Name="Batches" Grid.Column="1" Grid.Row ="3" Grid.ColumnSpan="1" Margin="5" Text="{Binding Batches}"/>
+        <TextBox Name="Batches" Grid.Column="1" Grid.Row ="3" Margin="5" Text="{Binding Batches}"/>
 
         <TextBlock Grid.Column="0" Grid.Row ="4" VerticalAlignment="Center" Text="Threshold 1" Margin="5"/>
-        <TextBox Name="Threshold1" Grid.Column="1" Grid.Row ="4" Grid.ColumnSpan="1" Margin="5" Text="{Binding Threshold1}"/>
+        <TextBox Name="Threshold1" Grid.Column="1" Grid.Row ="4" Margin="5" Text="{Binding Threshold1}"/>
         <TextBlock Grid.Column="2" Grid.Row ="4" VerticalAlignment="Center" Text="% of tank capacity" Margin="5"/>
         
         <TextBlock Grid.Column="0" Grid.Row ="5" VerticalAlignment="Center" Text="Threshold 2" Margin="5"/>
-        <TextBox Name="Threshold2" Grid.Column="1" Grid.Row ="5" Grid.ColumnSpan="1" Margin="5" Text="{Binding Threshold2}"/>
+        <TextBox Name="Threshold2" Grid.Column="1" Grid.Row ="5" Margin="5" Text="{Binding Threshold2}"/>
         <TextBlock Grid.Column="2" Grid.Row ="5" VerticalAlignment="Center" Text="% of tank capacity" Margin="5"/>
+        
+        
+        
+        <TextBlock Grid.Column="0" Grid.Row ="6" VerticalAlignment="Center" Text="Inventories" FontWeight="Medium" FontSize="14" Grid.ColumnSpan="2" Margin="5"/>
+        <TextBlock Grid.Column="0" Grid.Row ="7" VerticalAlignment="Center" Text="Updates per" Margin="5"/>
+        <TextBox Name="InventoryThrottle" Grid.Column="1" Grid.Row ="7" Margin="5" Text="{Binding InventoryThrottle}"/>
+        <TextBlock Grid.Column="2" Grid.Row ="7" VerticalAlignment="Center" Text="ms (only static grids)" Margin="5"/>
 
-        <Button Grid.Column="4" Grid.Row="6" Content="Save Config" Margin="5" Click="SaveButton_OnClick"></Button>
+        <Button Grid.Column="4" Grid.Row="8" Content="Save Config" Margin="5" Click="SaveButton_OnClick" />
     </Grid>
 </UserControl>

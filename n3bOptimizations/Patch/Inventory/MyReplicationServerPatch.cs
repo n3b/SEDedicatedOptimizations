@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using n3b.SEMultiplayer;
 using Sandbox.Game;
-using Sandbox.Game.Entities;
 using Sandbox.Game.Replication;
 using Sandbox.Game.Replication.StateGroups;
+using VRage;
 using VRage.Network;
+using VRageMath;
 
 namespace n3bOptimizations.Patch.Inventory
 {
@@ -79,8 +82,7 @@ namespace n3bOptimizations.Patch.Inventory
             try
             {
                 if (!_replicables.TryGetValue(inventory, out var replicable)) return;
-
-                // (propSync.GetValue(replicable) as MyPropertySyncStateGroup)?.MarkDirty();
+                (propSync.GetValue(replicable) as MyPropertySyncStateGroup).MarkDirty();
                 var state = invState.GetValue(replicable);
                 if (state != null) markDirtyState.Invoke(state, new[] {inventory});
             }
@@ -96,16 +98,8 @@ namespace n3bOptimizations.Patch.Inventory
             {
                 if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
 
-                if (groupEntry.Group is MyPropertySyncStateGroup gr)
-                {
-                    // don't send mass/volume updates for stations, they are ignored in physics anyway (if i'm not wrong meh)
-                    if (rep.Instance.Owner is MyCubeBlock block && block?.CubeGrid?.IsStatic == true) return false;
-                    return true;
-                }
-
                 var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                if (!state.IsEnabledAPI()) return true;
-                return state.IsSubscribedToInventory(rep.Instance);
+                return state.Companion().ScheduleInventoryUpdate(rep.Instance);
             }
             catch (Exception e)
             {
@@ -118,11 +112,9 @@ namespace n3bOptimizations.Patch.Inventory
         {
             try
             {
-                if (eventInstance is MyExternalReplicable<MyInventory> rep)
-                {
-                    var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                    return !state.IsEnabledAPI() || state.IsSubscribedToInventory(rep.Instance);
-                }
+                if (!(eventInstance is MyExternalReplicable<MyInventory> rep)) return true;
+                var state = (MyClientStateBase) _stateInfo.GetValue(client);
+                return state.Companion().IsSubscribedToInventory(rep.Instance);
             }
             catch (Exception e)
             {
@@ -134,7 +126,7 @@ namespace n3bOptimizations.Patch.Inventory
 
         public static void RemoveClientPrefix(Endpoint endpoint)
         {
-            MyClientStateBaseExtension.RemoveEndpoint(endpoint.Id);
+            ClientStateCompanion.Remove(endpoint.Id);
         }
 
 #if DEBUG

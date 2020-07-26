@@ -95,11 +95,12 @@
     <ItemGroup>
         <Compile Include="IPatch.cs"/>
         <Compile Include="Multiplayer\API.cs"/>
+        <Compile Include="Multiplayer\ClientStateCompanion.cs"/>
         <Compile Include="Multiplayer\Contracts.cs"/>
+        <Compile Include="Multiplayer\MyClientStateBaseExtension.cs"/>
         <Compile Include="Patch\GasTank\GasTankLogicComponent.cs"/>
         <Compile Include="Patch\GasTank\GasTankThrottle.cs"/>
         <Compile Include="Patch\GasTank\UpdateWork.cs"/>
-        <Compile Include="Patch\Inventory\MyClientStateBaseExtension.cs"/>
         <Compile Include="Patch\Inventory\MyReplicationServerPatch.cs"/>
         <Compile Include="Patch\Inventory\MyProductionBLockPatch.cs"/>
         <Compile Include="Plugin.cs"/>
@@ -109,6 +110,7 @@
         <Compile Include="Properties\AssemblyInfo.cs"/>
         <Compile Include="Test.cs"/>
         <Compile Include="Util\ConcurrentHashSet.cs"/>
+        <Compile Include="Util\DebounceDispatcher.cs"/>
         <Page Include="PluginControl.xaml"/>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>

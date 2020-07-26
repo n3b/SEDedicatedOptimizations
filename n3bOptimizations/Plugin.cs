@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using HarmonyLib;
 using n3b.SEMultiplayer;
 using NLog;
@@ -19,6 +20,7 @@ namespace n3bOptimizations
     public class Plugin : TorchPluginBase, IWpfPlugin
     {
         long channelId = 2171994463;
+        public static PluginConfig StaticConfig;
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
         private Persistent<PluginConfig> _config;
@@ -51,6 +53,10 @@ namespace n3bOptimizations
                 }
 #endif
             }
+
+
+            new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.ApplicationIdle, (s, e) => { Console.WriteLine(">>>>>>>>> timer fired"); },
+                Dispatcher.CurrentDispatcher);
 
             torch.GameStateChanged += GameStateChanged;
             var manager = torch.Managers.GetManager<TorchSessionManager>();
@@ -93,6 +99,8 @@ namespace n3bOptimizations
                 _config = new Persistent<PluginConfig>(configFile, new PluginConfig());
                 _config.Save();
             }
+
+            StaticConfig = _config.Data;
         }
 
         public void Save()
@@ -137,6 +145,7 @@ namespace n3bOptimizations
         private int threshold2 = 3;
         private int perTicks = 13;
         private int batches = 2;
+        private int inventoryThrottle = 1000;
 
         public int Threshold1
         {
@@ -160,6 +169,12 @@ namespace n3bOptimizations
         {
             get => batches;
             set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1));
+        }
+
+        public int InventoryThrottle
+        {
+            get => inventoryThrottle;
+            set => SetValue(ref inventoryThrottle, Math.Max(Math.Min(value, 10000), 20));
         }
     }
 }

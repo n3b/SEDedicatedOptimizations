@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using ParallelTasks;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game.Entities.Blocks;
@@ -15,7 +14,7 @@ namespace n3bOptimizations.Patch.GasTank
         {
             var data = (UpdateWorkData) wd;
             if (data == null) return;
-            foreach (var hash in tanksUpdated.Keys.ToArray())
+            foreach (var hash in tanksUpdated.Keys)
             {
                 try
                 {
