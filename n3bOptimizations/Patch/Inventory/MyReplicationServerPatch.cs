@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
-using n3b.SEMultiplayer;
+using n3bOptimizations.Multiplayer;
 using Sandbox.Game;
 using Sandbox.Game.Replication;
-using VRage;
+using Sandbox.Game.Replication.StateGroups;
 using VRage.Network;
-using VRageMath;
 
 namespace n3bOptimizations.Patch.Inventory
 {
@@ -40,10 +38,6 @@ namespace n3bOptimizations.Patch.Inventory
 
             source = AccessTools.Method(typeof(MyReplicationServer), "ShouldSendEvent");
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "ShouldSendEventPrefix");
-            harmony.Patch(source, new HarmonyMethod(patch));
-
-            source = AccessTools.Method(typeof(MyReplicationServer), "RemoveClient");
-            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "RemoveClientPrefix");
             harmony.Patch(source, new HarmonyMethod(patch));
 
             source = AccessTools.Method(InventoryReplicableType, "OnHook");
@@ -83,8 +77,8 @@ namespace n3bOptimizations.Patch.Inventory
             {
                 if (!_replicables.TryGetValue(inventory, out var replicable)) return;
                 // (propSync.GetValue(replicable) as MyPropertySyncStateGroup).MarkDirty();
-                var state = invState.GetValue(replicable);
-                if (state != null) markDirtyState.Invoke(state, new[] {inventory});
+                var inventoryStateGroup = invState.GetValue(replicable);
+                if (inventoryStateGroup != null) markDirtyState.Invoke(inventoryStateGroup, new[] {inventory});
             }
             catch (Exception e)
             {
@@ -97,9 +91,9 @@ namespace n3bOptimizations.Patch.Inventory
             try
             {
                 if (!(groupEntry.Owner is MyExternalReplicable<MyInventory> rep)) return true;
-
-                var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                return state.Companion().ScheduleInventoryUpdate(groupEntry);
+                if (groupEntry.Group is MyPropertySyncStateGroup) return true;
+                var state = (CustomClientState) _stateInfo.GetValue(client);
+                return state.IsSubscribedToInventory(rep.Instance);
             }
             catch (Exception e)
             {
@@ -113,8 +107,8 @@ namespace n3bOptimizations.Patch.Inventory
             try
             {
                 if (!(eventInstance is MyExternalReplicable<MyInventory> rep)) return true;
-                var state = (MyClientStateBase) _stateInfo.GetValue(client);
-                return state.Companion().IsSubscribedToInventory(rep.Instance);
+                var state = (CustomClientState) _stateInfo.GetValue(client);
+                return state.IsSubscribedToInventory(rep.Instance);
             }
             catch (Exception e)
             {
@@ -122,11 +116,6 @@ namespace n3bOptimizations.Patch.Inventory
             }
 
             return true;
-        }
-
-        public static void RemoveClientPrefix(Endpoint endpoint)
-        {
-            ClientStateCompanion.Remove(endpoint.Id);
         }
 
 #if DEBUG

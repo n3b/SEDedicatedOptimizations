@@ -55,16 +55,22 @@
       <Reference Include="Sandbox.Game, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null">
           <HintPath>..\..\..\..\..\..\torch-server\DedicatedServer64\Sandbox.Game.dll</HintPath>
       </Reference>
+      <Reference Include="Sandbox.Graphics, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\SpaceEngineers\Bin64\Sandbox.Graphics.dll</HintPath>
+      </Reference>
+      <Reference Include="SpaceEngineers.Game, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\SpaceEngineers\Bin64\SpaceEngineers.Game.dll</HintPath>
+      </Reference>
       <Reference Include="SpaceEngineers.ObjectBuilders, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
           <HintPath>..\..\..\..\..\..\torch-server\DedicatedServer64\SpaceEngineers.ObjectBuilders.dll</HintPath>
       </Reference>
       <Reference Include="System"/>
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml" />
-    <Reference Include="Torch, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\..\..\..\..\..\torch-server\Torch.dll</HintPath>
+      <Reference Include="System.Core"/>
+      <Reference Include="System.Data"/>
+      <Reference Include="System.Xaml"/>
+      <Reference Include="System.Xml"/>
+      <Reference Include="Torch, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\..\..\..\torch-server\Torch.dll</HintPath>
     </Reference>
     <Reference Include="Torch.API, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\..\..\..\..\..\torch-server\Torch.API.dll</HintPath>
@@ -97,7 +103,7 @@
         <Compile Include="Multiplayer\API.cs"/>
         <Compile Include="Multiplayer\ClientStateCompanion.cs"/>
         <Compile Include="Multiplayer\Contracts.cs"/>
-        <Compile Include="Multiplayer\MyClientStateBaseExtension.cs"/>
+        <Compile Include="Multiplayer\CustomClientState.cs"/>
         <Compile Include="Patch\GasTank\GasTankLogicComponent.cs"/>
         <Compile Include="Patch\GasTank\GasTankThrottle.cs"/>
         <Compile Include="Patch\GasTank\UpdateWork.cs"/>

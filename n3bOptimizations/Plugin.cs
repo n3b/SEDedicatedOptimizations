@@ -6,8 +6,10 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using HarmonyLib;
 using n3b.SEMultiplayer;
+using n3bOptimizations.Multiplayer;
 using NLog;
 using Sandbox;
+using Sandbox.Game;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -42,8 +44,8 @@ namespace n3bOptimizations
                 try
                 {
 #endif
-                var obj = (IPatch) Activator.CreateInstance(t);
-                obj.Inject(harmony);
+                    var obj = (IPatch) Activator.CreateInstance(t);
+                    obj.Inject(harmony);
 #if !DEBUG
                     Log.Info($"{t.Name} applied");
                 }
@@ -72,6 +74,7 @@ namespace n3bOptimizations
         void GameStateChanged(MySandboxGame game, TorchGameState state)
         {
             if (state != TorchGameState.Created) return;
+            MyPerGameSettings.ClientStateType = typeof(CustomClientState);
             API.Register();
         }
 

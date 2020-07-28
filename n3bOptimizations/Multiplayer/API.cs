@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Data;
 using System.Linq;
 using System.Text;
 using n3bOptimizations;
-using n3bOptimizations.Patch.Inventory;
+using n3bOptimizations.Multiplayer;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Network;
@@ -19,12 +20,12 @@ namespace n3b.SEMultiplayer
             MyModAPIHelper.MyMultiplayer.Static.RegisterMessageHandler(_channel, Handle);
         }
 
-        static bool CheckEnabled(byte[] msg, MyClientStateBase state)
+        static bool CheckEnabled(byte[] msg, CustomClientState state)
         {
             var enabled = _magicString.SequenceEqual(msg);
             if (enabled)
             {
-                state.Companion().APIEnabled = true;
+                state.APIEnabled = true;
                 MyModAPIHelper.MyMultiplayer.Static.SendMessageTo(_channel, _magicString, state.EndpointId.Id.Value, true);
 #if DEBUG
                 Plugin.Log.Warn("got magic message");
@@ -37,14 +38,13 @@ namespace n3b.SEMultiplayer
 
         public static void Handle(byte[] msg)
         {
-            var state = MyEventContext.Current.ClientState;
-            if (state == null)
+            if (!(MyEventContext.Current.ClientState is CustomClientState state))
             {
-                Plugin.Log.Warn($"o_O there is no damned client!");
-                return;
+                Plugin.Log.Error($"Invalid client state!");
+                throw new ConstraintException($"Invalid client state!");
             }
 
-            if (!state.Companion().APIEnabled && !CheckEnabled(msg, state)) return;
+            if (!state.APIEnabled && !CheckEnabled(msg, state)) return;
 
             IProtoSerializable o;
             try
@@ -63,12 +63,12 @@ namespace n3b.SEMultiplayer
             }
         }
 
-        static void SubscribeInventories(MyClientStateBase state, SubscribeInventories msg)
+        static void SubscribeInventories(CustomClientState state, SubscribeInventories msg)
         {
 #if DEBUG
             Plugin.Log.Warn($"Got inventories subscribe {msg.EntityId?.Length ?? 0}");
 #endif
-            state.Companion().ClearInventorySubscriptions();
+            state.ClearInventorySubscriptions();
             if (msg.EntityId == null) return;
 
             foreach (var entityId in msg.EntityId)
@@ -86,7 +86,7 @@ namespace n3b.SEMultiplayer
                     for (int i2 = 0; i2 < entity.InventoryCount; i2++)
                     {
                         var inv = entity.GetInventory(i2);
-                        if (inv != null) state.Companion().SubscribeInventory(inv);
+                        if (inv != null) state.SubscribeInventory(inv);
                     }
                 }
                 catch (Exception e)
