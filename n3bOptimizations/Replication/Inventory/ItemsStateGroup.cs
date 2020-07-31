@@ -26,39 +26,44 @@ namespace n3bOptimizations.Replication.Inventory
 
         public bool NeedsUpdate => false;
 
-        private MyReplicationServer server;
+        private MyReplicationServer _server;
 
-        public int lastUpdated = 0;
+        private ulong _lastFrame = 0;
 
-        public int interval = 0;
+        public int Interval = 0;
 
-        public ItemsStateGroup(MyInventory entity, IMyReplicable owner)
+        public int Batch { get; }
+
+        public ItemsStateGroup(MyInventory entity, IMyReplicable owner, int batch)
         {
             Inventory = entity;
+            Batch = batch;
             m_clientInventoryUpdate = new Dictionary<Endpoint, InventoryClientData>();
             Inventory.ContentsChanged += InventoryChanged;
             Owner = owner;
-            server = (MyReplicationServer) MyMultiplayer.Static.ReplicationLayer;
+            _server = (MyReplicationServer) MyMultiplayer.Static.ReplicationLayer;
         }
 
         private void InventoryChanged(MyInventoryBase obj)
         {
-            if (lastUpdated + interval > MySandboxGame.TotalTimeInMilliseconds) InventoryReplicable.Schedule(this, interval);
+            var counter = MySandboxGame.Static.SimulationFrameCounter;
+            if (_lastFrame + (uint) Interval > counter) InventoryReplicableUpdate.Schedule(this);
             else MarkDirty();
         }
 
         public void MarkDirty()
         {
-            if (lastUpdated == MySandboxGame.TotalTimeInMilliseconds) return;
-            lastUpdated = MySandboxGame.TotalTimeInMilliseconds;
-            InventoryReplicable.ResetSchedule(this);
+            var counter = MySandboxGame.Static.SimulationFrameCounter;
+            if (_lastFrame == counter) return;
+            _lastFrame = counter;
+            InventoryReplicableUpdate.Reset(this);
 
             foreach (KeyValuePair<Endpoint, InventoryClientData> keyValuePair in m_clientInventoryUpdate)
             {
                 m_clientInventoryUpdate[keyValuePair.Key].Dirty = true;
             }
 
-            server.AddToDirtyGroups(this);
+            _server.AddToDirtyGroups(this);
         }
 
         public void CreateClientData(MyClientStateBase forClient)
@@ -111,7 +116,7 @@ namespace n3bOptimizations.Replication.Inventory
         public void Destroy()
         {
             Inventory.ContentsChanged -= InventoryChanged;
-            server = null;
+            _server = null;
         }
 
         public void Serialize(BitStream stream, Endpoint forClient, MyTimeSpan serverTimestamp, MyTimeSpan lastClientTimestamp, byte packetId, int maxBitPosition,
@@ -899,7 +904,7 @@ namespace n3bOptimizations.Replication.Inventory
                 if (!delivered)
                 {
                     inventoryClientData.FailedIncompletePackets.Add(item);
-                    server.AddToDirtyGroups(this);
+                    _server.AddToDirtyGroups(this);
                 }
 
                 inventoryClientData.SendPackets.Remove(packetId);

@@ -116,6 +116,7 @@
         <Compile Include="Properties\AssemblyInfo.cs"/>
         <Compile Include="Replication\Inventory\InventoryReplicable.cs"/>
         <Compile Include="Replication\Inventory\InventoryReplicablePatch.cs"/>
+        <Compile Include="Replication\Inventory\InventoryReplicableUpdate.cs"/>
         <Compile Include="Replication\Inventory\ItemsStateGroup.cs"/>
         <Compile Include="Replication\Inventory\PropsStateGroup.cs"/>
         <Compile Include="Test.cs"/>

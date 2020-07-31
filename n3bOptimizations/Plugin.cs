@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using HarmonyLib;
 using n3b.SEMultiplayer;
 using n3bOptimizations.Patch.GasTank;
+using n3bOptimizations.Replication.Inventory;
 using NLog;
 using Sandbox;
 using Torch;
@@ -65,6 +66,7 @@ namespace n3bOptimizations
         {
             base.Update();
             GasTankPatch.Update();
+            InventoryReplicableUpdate.Update();
         }
 
         void GameStateChanged(MySandboxGame game, TorchGameState state)

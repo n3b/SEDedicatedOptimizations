@@ -8,8 +8,8 @@ namespace n3bOptimizations
         private bool gasTankEnabled = true;
         private int gasTankthreshold1 = 6;
         private int gasTankthreshold2 = 3;
-        private int gasTankinterval = 200;
-        private int gasTankbatches = 2;
+        private int gasTankinterval = 5;
+        private int gasTankbatches = 5;
 
         public bool GasTankEnabled
         {
@@ -32,13 +32,13 @@ namespace n3bOptimizations
         public int GasTankInterval
         {
             get => gasTankinterval;
-            set => SetValue(ref gasTankinterval, Math.Max(Math.Min(value, 5000), 20));
+            set => SetValue(ref gasTankinterval, Math.Max(Math.Min(value, 100), 1));
         }
 
         public int GasTankBatches
         {
             get => gasTankbatches;
-            set => SetValue(ref gasTankbatches, Math.Max(Math.Min(value, 5), 1));
+            set => SetValue(ref gasTankbatches, Math.Max(Math.Min(value, 20), 1));
         }
 
         private bool productionBlockEnabled = true;
@@ -50,7 +50,8 @@ namespace n3bOptimizations
         }
 
         private bool inventoryEnabled = true;
-        private int inventoryInterval = 500;
+        private int inventoryInterval = 5;
+        private int inventoryBatches = 5;
 
         public bool InventoryEnabled
         {
@@ -61,7 +62,13 @@ namespace n3bOptimizations
         public int InventoryInterval
         {
             get => inventoryInterval;
-            set => SetValue(ref inventoryInterval, Math.Max(Math.Min(value, 5000), 20));
+            set => SetValue(ref inventoryInterval, Math.Max(Math.Min(value, 100), 1));
+        }
+
+        public int InventoryBatches
+        {
+            get => inventoryBatches;
+            set => SetValue(ref inventoryBatches, Math.Max(Math.Min(value, 20), 1));
         }
     }
 }

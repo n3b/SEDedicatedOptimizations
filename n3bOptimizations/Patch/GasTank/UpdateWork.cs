@@ -18,7 +18,7 @@ namespace n3bOptimizations.Patch.GasTank
             {
                 try
                 {
-                    if ((hash & int.MaxValue) % data.bucket != 0) continue;
+                    if ((hash & int.MaxValue) % data.totalBuckets != data.bucket) continue;
                     tanksUpdated.TryRemove(hash, out var tuple);
                     if (tuple == null || tuple.Item1 == null) continue;
 
@@ -35,10 +35,12 @@ namespace n3bOptimizations.Patch.GasTank
         public class UpdateWorkData : WorkData
         {
             public int bucket;
+            public int totalBuckets;
 
-            public UpdateWorkData(int bucket)
+            public UpdateWorkData(int bucket, int totalBuckets)
             {
                 this.bucket = bucket;
+                this.totalBuckets = totalBuckets;
             }
         }
     }

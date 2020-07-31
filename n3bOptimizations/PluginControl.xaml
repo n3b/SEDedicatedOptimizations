@@ -10,12 +10,12 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
+
         <GroupBox Header="Gas Tanks" Margin="10" Padding="10" Grid.Row="0">
             <StackPanel>
                 <CheckBox Margin="3" Name="GasTankEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding GasTankEnabled}">
@@ -23,11 +23,15 @@
                 </CheckBox>
                 <StackPanel Orientation="Horizontal">
                     <TextBox Margin="3" VerticalContentAlignment="Center" Name="GasTankInterval" Text="{Binding GasTankInterval}" Width="30" Height="20" />
-                    <Label Margin="3" VerticalContentAlignment="Center">ms single batch update</Label>
+                    <Label Margin="3" VerticalContentAlignment="Center">frames for single update. 1 frame ~16ms at Sim 1.0.</Label>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBox Margin="3" VerticalContentAlignment="Center" Name="GasTankBatches" Text="{Binding GasTankBatches}" Width="30" Height="20" />
-                    <Label Margin="3" VerticalContentAlignment="Center">total batches</Label>
+                    <Label Margin="3" VerticalContentAlignment="Center" MaxWidth="450">
+                        <TextBlock TextWrapping="Wrap">
+                            batches. At 10 frames update and 2 batches one individual tank will be updated every 20 frames (once per 360ms).
+                        </TextBlock>
+                    </Label>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBox Margin="3" VerticalContentAlignment="Center" Name="GasTankThreshold1" Text="{Binding GasTankThreshold1}" Width="30" Height="20" />
@@ -40,7 +44,7 @@
                 <TextBlock TextWrapping="Wrap">In case fill ratio is decreasing and falls below threshold 1 and the next update is expected to be below threshold 2 (projected value) plugin starts sending updates immediately</TextBlock>
             </StackPanel>
         </GroupBox>
-        
+
         <GroupBox Header="Inventories" Margin="10" Padding="10" Grid.Row="1">
             <StackPanel Width="Auto">
                 <CheckBox Margin="3" Name="InventoryEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding InventoryEnabled}">
@@ -49,12 +53,20 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBox Margin="3" VerticalContentAlignment="Center" Name="InventoryInterval" Text="{Binding InventoryInterval}" Width="30" Height="20" />
                     <Label Margin="3" VerticalContentAlignment="Center" MaxWidth="450">
-                        <TextBlock TextWrapping="Wrap">ms throttling. Applied to mass/volume of static grids, and inventory contents of all grids.</TextBlock>
+                        <TextBlock TextWrapping="Wrap">frames for single update. 1 frame ~16ms at Sim 1.0.</TextBlock>
+                    </Label>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Margin="3" VerticalContentAlignment="Center" Name="InventoryBatches" Text="{Binding InventoryBatches}" Width="30" Height="20" />
+                    <Label Margin="3" VerticalContentAlignment="Center" MaxWidth="450">
+                        <TextBlock TextWrapping="Wrap">
+                            batches.
+                        </TextBlock>
                     </Label>
                 </StackPanel>
             </StackPanel>
         </GroupBox>
-        
+
         <GroupBox Header="Production Blocks" Margin="10" Padding="10" Grid.Row="2">
             <StackPanel>
                 <CheckBox Margin="3" Name="ProductionBlockEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding ProductionBlockEnabled}">
@@ -65,6 +77,6 @@
         </GroupBox>
 
         <Button Grid.Row="100" Content="Save Config" Margin="5" Click="SaveButton_OnClick" Width="100" />
-        
+
     </Grid>
 </UserControl>

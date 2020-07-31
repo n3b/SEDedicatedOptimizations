@@ -23,6 +23,8 @@ namespace n3bOptimizations.Replication.Inventory
             patch = AccessTools.Method(typeof(InventoryReplicablePatch), "RegisterPostfix");
             harmony.Patch(source, null, new HarmonyMethod(patch));
 
+            InventoryReplicableUpdate.Init();
+
             return true;
         }
 

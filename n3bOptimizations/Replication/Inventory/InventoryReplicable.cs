@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Replication;
-using SEClientFixes.Util;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Library.Collections;
@@ -30,22 +28,18 @@ namespace n3bOptimizations.Replication.Inventory
 
         public override bool IsValid => Instance?.Entity?.MarkedForClose == false;
 
-        static List<TimerUtil> timers = new List<TimerUtil>
-        {
-            new TimerUtil()
-        };
-
-        static HashSet<IMarkDirty> dirtyGroups = new HashSet<IMarkDirty>();
-
         protected override void OnHook()
         {
             base.OnHook();
             if (Instance == null) return;
 
-            itemsGroup = new ItemsStateGroup(Instance, this);
-            itemsGroup.interval = Plugin.StaticConfig.InventoryInterval;
-            propsGroup = new PropsStateGroup(this, Instance.SyncType);
+            var batch = InventoryReplicableUpdate.GetNextBatch();
+            var replicableInterval = InventoryReplicableUpdate.ReplicableInterval;
+            itemsGroup = new ItemsStateGroup(Instance, this, batch);
+            itemsGroup.Interval = replicableInterval;
+            propsGroup = new PropsStateGroup(this, Instance.SyncType, batch);
             Instance.BeforeRemovedFromContainer += OnRemovedFromContainer;
+
             MyCubeBlock myCubeBlock = Instance.Owner as MyCubeBlock;
             if (myCubeBlock != null)
             {
@@ -68,7 +62,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         private void OnGridIsStaticChanged(MyCubeGrid grid, bool isStatic)
         {
-            propsGroup.interval = isStatic ? Plugin.StaticConfig.InventoryInterval : 0;
+            propsGroup.Interval = isStatic ? InventoryReplicableUpdate.ReplicableInterval : 0;
         }
 
         private void OnGridSplit(MyCubeGrid original, MyCubeGrid newGrid)
@@ -76,26 +70,6 @@ namespace n3bOptimizations.Replication.Inventory
             original.OnStaticChanged -= OnGridIsStaticChanged;
             newGrid.OnStaticChanged += OnGridIsStaticChanged;
             OnGridIsStaticChanged(newGrid, newGrid.IsStatic);
-        }
-
-        public static void Schedule(IMarkDirty group, int interval)
-        {
-            dirtyGroups.Add(group);
-            timers[0].Throttle(interval, ProcessDirtyGroups);
-        }
-
-        public static void ResetSchedule(IMarkDirty group)
-        {
-            dirtyGroups.Remove(group);
-        }
-
-        static void ProcessDirtyGroups(object param)
-        {
-            var dirty = Interlocked.Exchange(ref dirtyGroups, new HashSet<IMarkDirty>());
-            foreach (var group in dirty)
-            {
-                group.MarkDirty();
-            }
         }
 
         public override IMyReplicable GetParent()
@@ -167,8 +141,8 @@ namespace n3bOptimizations.Replication.Inventory
         {
             if (!(Instance?.Owner is MyCubeBlock block)) return;
 
-            dirtyGroups.Remove(this.itemsGroup);
-            dirtyGroups.Remove(this.propsGroup);
+            InventoryReplicableUpdate.Reset(itemsGroup);
+            InventoryReplicableUpdate.Reset(propsGroup);
 
             block.SlimBlock.CubeGridChanged -= OnBlockCubeGridChanged;
             block.CubeGrid.OnStaticChanged -= OnGridIsStaticChanged;
@@ -202,10 +176,5 @@ namespace n3bOptimizations.Replication.Inventory
             itemsGroup.MarkDirty();
             propsGroup.MarkDirty();
         }
-    }
-
-    public interface IMarkDirty
-    {
-        public void MarkDirty();
     }
 }
