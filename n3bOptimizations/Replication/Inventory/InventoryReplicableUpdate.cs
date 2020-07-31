@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox;
 
@@ -28,35 +29,58 @@ namespace n3bOptimizations.Replication.Inventory
 
         public static int GetNextBatch()
         {
-            return ++_count % _batches;
+            _count++;
+            return _count % _batches;
         }
 
         public static void Schedule(IMarkDirty group)
         {
-            _dirty[group.Batch].Add(group);
+            try
+            {
+                _dirty[group.Batch].Add(group);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         public static void Reset(IMarkDirty group)
         {
-            _dirty[group.Batch].Remove(group);
+            try
+            {
+                _dirty[group.Batch].Remove(group);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         public static void Update()
         {
-            if (!_enabled) return;
-            var counter = MySandboxGame.Static.SimulationFrameCounter;
-            if (_lastFrame + (uint) _interval > counter) return;
-            _lastFrame = counter;
-
-            var dirty = _dirty[_current];
-            _dirty[_current] = new HashSet<IMarkDirty>();
-            foreach (var group in dirty)
+            try
             {
-                group.MarkDirty();
-            }
+                if (!_enabled) return;
+                var counter = MySandboxGame.Static.SimulationFrameCounter;
+                if (_lastFrame + (uint) _interval > counter) return;
+                _lastFrame = counter;
 
-            _current++;
-            if (_current == _batches) _current = 0;
+                var dirty = _dirty[_current];
+                _dirty[_current] = new HashSet<IMarkDirty>();
+                foreach (var group in dirty)
+                {
+                    group.MarkDirty();
+                }
+
+                _current++;
+                if (_current == _batches) _current = 0;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("Unable to process inventories update");
+                Plugin.Log.Error(e);
+            }
         }
     }
 

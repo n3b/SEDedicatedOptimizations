@@ -41,17 +41,17 @@ namespace n3bOptimizations.Replication.Inventory
             Instance.BeforeRemovedFromContainer += OnRemovedFromContainer;
 
             MyCubeBlock myCubeBlock = Instance.Owner as MyCubeBlock;
-            if (myCubeBlock != null)
+            if (myCubeBlock == null)
             {
-                myCubeBlock.SlimBlock.CubeGridChanged += OnBlockCubeGridChanged;
-                myCubeBlock.CubeGrid.OnStaticChanged += OnGridIsStaticChanged;
-                myCubeBlock.CubeGrid.OnGridSplit += OnGridSplit;
-                OnGridIsStaticChanged(myCubeBlock.CubeGrid, myCubeBlock.CubeGrid.IsStatic);
-                m_parent = FindByObject(myCubeBlock.CubeGrid);
+                m_parent = FindByObject(Instance.Owner);
                 return;
             }
 
-            m_parent = FindByObject(Instance.Owner);
+            myCubeBlock.SlimBlock.CubeGridChanged += OnBlockCubeGridChanged;
+            myCubeBlock.CubeGrid.OnStaticChanged += OnGridIsStaticChanged;
+            myCubeBlock.CubeGrid.OnGridSplit += OnGridSplit;
+            OnGridIsStaticChanged(myCubeBlock.CubeGrid, myCubeBlock.CubeGrid.IsStatic);
+            m_parent = FindByObject(myCubeBlock.CubeGrid);
         }
 
         private void OnBlockCubeGridChanged(MySlimBlock slimBlock, MyCubeGrid grid)
@@ -62,7 +62,22 @@ namespace n3bOptimizations.Replication.Inventory
 
         private void OnGridIsStaticChanged(MyCubeGrid grid, bool isStatic)
         {
-            propsGroup.Interval = isStatic ? InventoryReplicableUpdate.ReplicableInterval : 0;
+            try
+            {
+                if (isStatic)
+                {
+                    propsGroup.Interval = InventoryReplicableUpdate.ReplicableInterval;
+                    return;
+                }
+
+                propsGroup.Interval = 0;
+                InventoryReplicableUpdate.Reset(propsGroup);
+                propsGroup.MarkDirty();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         private void OnGridSplit(MyCubeGrid original, MyCubeGrid newGrid)
@@ -123,6 +138,8 @@ namespace n3bOptimizations.Replication.Inventory
 
         public override void OnDestroyClient()
         {
+            InventoryReplicableUpdate.Reset(itemsGroup);
+            InventoryReplicableUpdate.Reset(propsGroup);
         }
 
         public override void GetStateGroups(List<IMyStateGroup> resultList)
@@ -139,14 +156,16 @@ namespace n3bOptimizations.Replication.Inventory
 
         private void OnRemovedFromContainer(MyEntityComponentBase obj)
         {
-            if (!(Instance?.Owner is MyCubeBlock block)) return;
-
             InventoryReplicableUpdate.Reset(itemsGroup);
             InventoryReplicableUpdate.Reset(propsGroup);
 
-            block.SlimBlock.CubeGridChanged -= OnBlockCubeGridChanged;
-            block.CubeGrid.OnStaticChanged -= OnGridIsStaticChanged;
-            block.CubeGrid.OnGridSplit -= OnGridSplit;
+            if (Instance?.Owner is MyCubeBlock block)
+            {
+                block.SlimBlock.CubeGridChanged -= OnBlockCubeGridChanged;
+                block.CubeGrid.OnStaticChanged -= OnGridIsStaticChanged;
+                block.CubeGrid.OnGridSplit -= OnGridSplit;
+            }
+
             RaiseDestroyed();
         }
 

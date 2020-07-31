@@ -14,9 +14,16 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <GroupBox Header="Gas Tanks" Margin="10" Padding="10" Grid.Row="0">
+        <StackPanel Grid.Row="0" Margin="15">
+            <TextBlock TextWrapping="Wrap">
+                You can enable/disable each feature separately. When one is disabled it doesn't make any changes to the game code, just in case if feature is making troubles. 
+            </TextBlock>
+        </StackPanel>
+
+        <GroupBox Header="Gas Tanks" Margin="10" Padding="10" Grid.Row="1">
             <StackPanel>
                 <CheckBox Margin="3" Name="GasTankEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding GasTankEnabled}">
                     <TextBlock Text="Enabled" VerticalAlignment="Center" />
@@ -45,7 +52,7 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="Inventories" Margin="10" Padding="10" Grid.Row="1">
+        <GroupBox Header="Inventories" Margin="10" Padding="10" Grid.Row="2">
             <StackPanel Width="Auto">
                 <CheckBox Margin="3" Name="InventoryEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding InventoryEnabled}">
                     <TextBlock Text="Enabled" VerticalAlignment="Center" />
@@ -67,7 +74,7 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="Production Blocks" Margin="10" Padding="10" Grid.Row="2">
+        <GroupBox Header="Production Blocks" Margin="10" Padding="10" Grid.Row="3">
             <StackPanel>
                 <CheckBox Margin="3" Name="ProductionBlockEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding ProductionBlockEnabled}">
                     <TextBlock Text="Enabled" VerticalAlignment="Center" />
