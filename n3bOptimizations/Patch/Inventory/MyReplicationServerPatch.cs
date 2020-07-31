@@ -61,7 +61,7 @@ namespace n3bOptimizations.Patch.Inventory
         {
             try
             {
-                if (!(eventInstance is MyInventory inventory)) return true;
+                if (!(eventInstance is IMyProxyTarget proxyTarget && proxyTarget.Target is MyInventory inventory)) return true;
                 var state = (CustomClientState) _stateInfo.GetValue(client);
                 return state.IsSubscribedToInventory(inventory);
             }

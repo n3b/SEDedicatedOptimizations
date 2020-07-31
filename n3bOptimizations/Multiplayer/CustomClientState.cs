@@ -35,7 +35,7 @@ namespace n3bOptimizations.Multiplayer
                         inventories.Add(i);
                         if (MyExternalReplicable.FindByObject(i) is InventoryReplicable replicable) replicable.Refresh();
                     }
-                else if (inventory is MyInventory i && i != null)
+                else if (inventory is MyInventory i)
                 {
                     inventories.Add(i);
                     if (MyExternalReplicable.FindByObject(i) is InventoryReplicable replicable) replicable.Refresh();
