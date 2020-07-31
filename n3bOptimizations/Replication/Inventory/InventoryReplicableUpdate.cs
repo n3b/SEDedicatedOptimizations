@@ -25,6 +25,10 @@ namespace n3bOptimizations.Replication.Inventory
             _batches = config.InventoryBatches;
             _interval = config.InventoryInterval;
             _dirty = Enumerable.Range(0, (int) _batches).Select(x => new HashSet<IMarkDirty>()).ToList();
+
+#if DEBUG
+            Plugin.Log.Warn($"Configured {_batches} batches with {_interval} frames");
+#endif
         }
 
         public static int GetNextBatch()
@@ -37,7 +41,9 @@ namespace n3bOptimizations.Replication.Inventory
         {
             try
             {
+                if (group.Scheduled) return;
                 _dirty[group.Batch].Add(group);
+                group.Scheduled = true;
             }
             catch (Exception e)
             {
@@ -49,7 +55,9 @@ namespace n3bOptimizations.Replication.Inventory
         {
             try
             {
+                if (!group.Scheduled) return;
                 _dirty[group.Batch].Remove(group);
+                group.Scheduled = false;
             }
             catch (Exception e)
             {
@@ -68,8 +76,12 @@ namespace n3bOptimizations.Replication.Inventory
 
                 var dirty = _dirty[_current];
                 _dirty[_current] = new HashSet<IMarkDirty>();
+#if DEBUG
+                Plugin.Log.Warn($"Updating inventories, frame {counter} batch {_current}, {dirty.Count} inventories");
+#endif
                 foreach (var group in dirty)
                 {
+                    group.Scheduled = false;
                     group.MarkDirty();
                 }
 
@@ -87,6 +99,7 @@ namespace n3bOptimizations.Replication.Inventory
     public interface IMarkDirty
     {
         public int Batch { get; }
+        public bool Scheduled { get; set; }
         public void MarkDirty();
     }
 }

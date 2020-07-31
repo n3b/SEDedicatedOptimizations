@@ -32,6 +32,8 @@ namespace n3bOptimizations.Replication.Inventory
 
         public int Interval = 0;
 
+        public bool Scheduled { get; set; }
+
         public int Batch { get; }
 
         public ItemsStateGroup(MyInventory entity, IMyReplicable owner, int batch)
@@ -48,7 +50,11 @@ namespace n3bOptimizations.Replication.Inventory
         {
             var counter = MySandboxGame.Static.SimulationFrameCounter;
             if (_lastFrame + (uint) Interval > counter) InventoryReplicableUpdate.Schedule(this);
-            else MarkDirty();
+            else
+            {
+                InventoryReplicableUpdate.Reset(this);
+                MarkDirty();
+            }
         }
 
         public void MarkDirty()
@@ -56,7 +62,6 @@ namespace n3bOptimizations.Replication.Inventory
             var counter = MySandboxGame.Static.SimulationFrameCounter;
             if (_lastFrame == counter) return;
             _lastFrame = counter;
-            InventoryReplicableUpdate.Reset(this);
 
             foreach (KeyValuePair<Endpoint, InventoryClientData> keyValuePair in m_clientInventoryUpdate)
             {

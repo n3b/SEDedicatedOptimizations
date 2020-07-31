@@ -32,6 +32,8 @@ namespace n3bOptimizations.Replication.Inventory
 
         public int Batch { get; }
 
+        public bool Scheduled { get; set; }
+
         public PropsStateGroup(InventoryReplicable owner, SyncType syncType, int batch)
         {
             Owner = owner;
@@ -53,16 +55,19 @@ namespace n3bOptimizations.Replication.Inventory
             m_propertyTimestamps[sync.Id] = _server.GetSimulationUpdateTime();
             var counter = MySandboxGame.Static.SimulationFrameCounter;
             if (_lastFrame + (uint) Interval > counter) InventoryReplicableUpdate.Schedule(this);
-            else MarkDirty();
+            else
+            {
+                InventoryReplicableUpdate.Reset(this);
+                MarkDirty();
+            }
         }
 
         public void MarkDirty()
         {
-            if (m_properties.Count == 0) return;
             var counter = MySandboxGame.Static.SimulationFrameCounter;
             if (_lastFrame == counter) return;
             _lastFrame = counter;
-            InventoryReplicableUpdate.Reset(this);
+            if (m_properties.Count == 0) return;
 
             foreach (KeyValuePair<Endpoint, ServerData.DataPerClient> keyValuePair in this.m_serverData.ServerClientData)
             {
