@@ -71,7 +71,7 @@ namespace n3bOptimizations.Patch.GasTank
         {
             if (!enabled) return;
             var ms = MySandboxGame.TotalTimeInMilliseconds;
-            if (lastUpdate + interval < ms) return;
+            if (lastUpdate + interval > ms) return;
             lastUpdate = ms;
             bucket++;
             var data = new UpdateWork.UpdateWorkData(bucket);
