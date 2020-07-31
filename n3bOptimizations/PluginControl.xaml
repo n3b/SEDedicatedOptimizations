@@ -19,7 +19,7 @@
 
         <StackPanel Grid.Row="0" Margin="15">
             <TextBlock TextWrapping="Wrap">
-                You can enable/disable each feature separately. When one is disabled it doesn't make any changes to the game code, just in case if feature is making troubles. 
+                You can enable/disable each feature separately. When one is disabled it won't make any changes to the game code, just in case if feature is making troubles. 
             </TextBlock>
         </StackPanel>
 
