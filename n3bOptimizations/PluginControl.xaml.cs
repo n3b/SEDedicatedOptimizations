@@ -21,11 +21,16 @@ namespace n3bOptimizations
 
         private void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
-            BindingOperations.GetBindingExpression(Threshold1, TextBox.TextProperty).UpdateTarget();
-            BindingOperations.GetBindingExpression(Threshold2, TextBox.TextProperty).UpdateTarget();
-            BindingOperations.GetBindingExpression(PerTicks, TextBox.TextProperty).UpdateTarget();
-            BindingOperations.GetBindingExpression(Batches, TextBox.TextProperty).UpdateTarget();
-            BindingOperations.GetBindingExpression(InventoryThrottle, TextBox.TextProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(GasTankEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(GasTankThreshold1, TextBox.TextProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(GasTankThreshold2, TextBox.TextProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(GasTankInterval, TextBox.TextProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(GasTankBatches, TextBox.TextProperty).UpdateTarget();
+
+            BindingOperations.GetBindingExpression(InventoryEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(InventoryInterval, TextBox.TextProperty).UpdateTarget();
+
+            BindingOperations.GetBindingExpression(ProductionBlockEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
             Plugin.Save();
         }
     }

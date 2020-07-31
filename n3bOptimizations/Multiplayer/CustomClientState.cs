@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using n3bOptimizations.Patch.Inventory;
+using n3bOptimizations.Replication.Inventory;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Inventory;
 using Sandbox.Game.Gui;
+using Sandbox.Game.Replication;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Library.Collections;
@@ -32,12 +33,12 @@ namespace n3bOptimizations.Multiplayer
                     {
                         if (i == null) continue;
                         inventories.Add(i);
-                        MyReplicationServerPatch.RefreshInventory(i);
+                        if (MyExternalReplicable.FindByObject(i) is InventoryReplicable replicable) replicable.Refresh();
                     }
                 else if (inventory is MyInventory i && i != null)
                 {
                     inventories.Add(i);
-                    MyReplicationServerPatch.RefreshInventory(i);
+                    if (MyExternalReplicable.FindByObject(i) is InventoryReplicable replicable) replicable.Refresh();
                 }
             }
             catch (Exception e)

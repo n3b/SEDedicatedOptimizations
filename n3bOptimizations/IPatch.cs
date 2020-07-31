@@ -4,6 +4,6 @@ namespace n3bOptimizations
 {
     public interface IPatch
     {
-        public void Inject(Harmony harmony);
+        public bool Inject(Harmony harmony);
     }
 }

@@ -6,10 +6,9 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using HarmonyLib;
 using n3b.SEMultiplayer;
-using n3bOptimizations.Multiplayer;
+using n3bOptimizations.Patch.GasTank;
 using NLog;
 using Sandbox;
-using Sandbox.Game;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -21,7 +20,6 @@ namespace n3bOptimizations
 {
     public class Plugin : TorchPluginBase, IWpfPlugin
     {
-        long channelId = 2171994463;
         public static PluginConfig StaticConfig;
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -35,8 +33,6 @@ namespace n3bOptimizations
             base.Init(torch);
             SetupConfig();
             var harmony = new Harmony("n3b.TorchOptimizationsPlugin");
-            GasTankThrottle.Init(harmony, Config);
-
             var i = typeof(IPatch);
             foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Contains(i)))
             {
@@ -44,10 +40,10 @@ namespace n3bOptimizations
                 try
                 {
 #endif
-                    var obj = (IPatch) Activator.CreateInstance(t);
-                    obj.Inject(harmony);
+                var obj = (IPatch) Activator.CreateInstance(t);
+                if (obj.Inject(harmony)) Log.Info($"{t.Name} applied");
+                else Log.Info($"{t.Name} skipped");
 #if !DEBUG
-                    Log.Info($"{t.Name} applied");
                 }
                 catch (Exception e)
                 {
@@ -68,13 +64,12 @@ namespace n3bOptimizations
         public override void Update()
         {
             base.Update();
-            GasTankThrottle.Update();
+            GasTankPatch.Update();
         }
 
         void GameStateChanged(MySandboxGame game, TorchGameState state)
         {
             if (state != TorchGameState.Created) return;
-            MyPerGameSettings.ClientStateType = typeof(CustomClientState);
             API.Register();
         }
 
@@ -117,67 +112,6 @@ namespace n3bOptimizations
             {
                 Log.Warn(e, "Configuration failed to save");
             }
-        }
-    }
-
-    public static class PluginExtensions
-    {
-        public static Delegate CreateDelegate(this MethodInfo methodInfo, object target)
-        {
-            Func<Type[], Type> getType;
-            var isAction = methodInfo.ReturnType == (typeof(void));
-            var types = methodInfo.GetParameters().Select(p => p.ParameterType);
-
-            if (isAction)
-            {
-                getType = System.Linq.Expressions.Expression.GetActionType;
-            }
-            else
-            {
-                getType = System.Linq.Expressions.Expression.GetFuncType;
-                types = types.Concat(new[] {methodInfo.ReturnType});
-            }
-
-            return methodInfo.IsStatic ? Delegate.CreateDelegate(getType(types.ToArray()), methodInfo) : Delegate.CreateDelegate(getType(types.ToArray()), target, methodInfo.Name);
-        }
-    }
-
-    public class PluginConfig : ViewModel
-    {
-        private int threshold1 = 6;
-        private int threshold2 = 3;
-        private int perTicks = 13;
-        private int batches = 2;
-        private int inventoryThrottle = 1000;
-
-        public int Threshold1
-        {
-            get => threshold1;
-            set => SetValue(ref threshold1, Math.Max(Math.Min(value, 100), (int) Threshold2 + 1));
-        }
-
-        public int Threshold2
-        {
-            get => threshold2;
-            set => SetValue(ref threshold2, Math.Max(Math.Min(value, Threshold1 - 1), 1));
-        }
-
-        public int PerTicks
-        {
-            get => perTicks;
-            set => SetValue(ref perTicks, Math.Max(Math.Min(value, 60), 1));
-        }
-
-        public int Batches
-        {
-            get => batches;
-            set => SetValue(ref batches, Math.Max(Math.Min(value, 5), 1));
-        }
-
-        public int InventoryThrottle
-        {
-            get => inventoryThrottle;
-            set => SetValue(ref inventoryThrottle, Math.Max(Math.Min(value, 10000), 20));
         }
     }
 }

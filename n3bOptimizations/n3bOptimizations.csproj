@@ -71,14 +71,14 @@
       <Reference Include="System.Xml"/>
       <Reference Include="Torch, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
           <HintPath>..\..\..\..\..\..\torch-server\Torch.dll</HintPath>
-    </Reference>
-    <Reference Include="Torch.API, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\..\..\..\..\..\torch-server\Torch.API.dll</HintPath>
-    </Reference>
-    <Reference Include="Torch.Server, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\..\..\..\..\..\torch-server\Torch.Server.exe</HintPath>
-    </Reference>
-    <Reference Include="VRage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      </Reference>
+      <Reference Include="Torch.API, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\..\..\..\torch-server\Torch.API.dll</HintPath>
+      </Reference>
+      <Reference Include="Torch.Server, Version=1.3.1.123, Culture=neutral, PublicKeyToken=null">
+          <HintPath>..\..\..\..\..\..\torch-server\Torch.Server.exe</HintPath>
+      </Reference>
+      <Reference Include="VRage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
         <SpecificVersion>False</SpecificVersion>
         <HintPath>..\..\..\..\..\..\torch-server\DedicatedServer64\VRage.dll</HintPath>
     </Reference>
@@ -101,21 +101,26 @@
     <ItemGroup>
         <Compile Include="IPatch.cs"/>
         <Compile Include="Multiplayer\API.cs"/>
-        <Compile Include="Multiplayer\ClientStateCompanion.cs"/>
         <Compile Include="Multiplayer\Contracts.cs"/>
         <Compile Include="Multiplayer\CustomClientState.cs"/>
         <Compile Include="Patch\GasTank\GasTankLogicComponent.cs"/>
-        <Compile Include="Patch\GasTank\GasTankThrottle.cs"/>
+        <Compile Include="Patch\GasTank\GasTankPatch.cs"/>
         <Compile Include="Patch\GasTank\UpdateWork.cs"/>
         <Compile Include="Patch\Inventory\MyReplicationServerPatch.cs"/>
         <Compile Include="Patch\Inventory\MyProductionBLockPatch.cs"/>
         <Compile Include="Plugin.cs"/>
+        <Compile Include="PluginConfig.cs"/>
         <Compile Include="PluginControl.xaml.cs">
             <DependentUpon>PluginControl.xaml</DependentUpon>
         </Compile>
         <Compile Include="Properties\AssemblyInfo.cs"/>
+        <Compile Include="Replication\Inventory\InventoryReplicable.cs"/>
+        <Compile Include="Replication\Inventory\InventoryReplicablePatch.cs"/>
+        <Compile Include="Replication\Inventory\ItemsStateGroup.cs"/>
+        <Compile Include="Replication\Inventory\PropsStateGroup.cs"/>
         <Compile Include="Test.cs"/>
         <Compile Include="Util\ConcurrentHashSet.cs"/>
+        <Compile Include="Util\Extensions.cs"/>
         <Compile Include="Util\TimerUtil.cs"/>
         <Page Include="PluginControl.xaml"/>
     </ItemGroup>

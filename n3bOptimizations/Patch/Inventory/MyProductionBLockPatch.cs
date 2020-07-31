@@ -18,11 +18,13 @@ namespace n3bOptimizations.Patch.Inventory
             return false;
         }
 
-        public void Inject(Harmony harmony)
+        public bool Inject(Harmony harmony)
         {
             var source = AccessTools.Method(typeof(MyProductionBlock), "RemoveFirstQueueItemAnnounce");
             var patch = AccessTools.Method(typeof(MyProductionBlockPatch), "RemoveFirstQueueItemAnnouncePatch");
             harmony.Patch(source, new HarmonyMethod(patch));
+
+            return true;
         }
     }
 }

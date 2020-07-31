@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using n3bOptimizations;
 using n3bOptimizations.Multiplayer;
+using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Network;
@@ -17,6 +18,8 @@ namespace n3b.SEMultiplayer
 
         public static void Register()
         {
+            if (!Plugin.StaticConfig.InventoryEnabled) return;
+            MyPerGameSettings.ClientStateType = typeof(CustomClientState);
             MyModAPIHelper.MyMultiplayer.Static.RegisterMessageHandler(_channel, Handle);
         }
 

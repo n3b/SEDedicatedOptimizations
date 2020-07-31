@@ -22,7 +22,7 @@ namespace n3bOptimizations.Patch.GasTank
                     tanksUpdated.TryRemove(hash, out var tuple);
                     if (tuple == null || tuple.Item1 == null) continue;
 
-                    Func<MyGasTank, Action<double>> fn = (MyGasTank x) => (Action<double>) GasTankThrottle.cb.CreateDelegate(typeof(Action<double>), x);
+                    Func<MyGasTank, Action<double>> fn = (MyGasTank x) => (Action<double>) GasTankPatch.cb.CreateDelegate(typeof(Action<double>), x);
                     MyMultiplayer.RaiseEvent<MyGasTank, double>(tuple.Item1, fn, tuple.Item2);
                 }
                 catch (Exception e)
