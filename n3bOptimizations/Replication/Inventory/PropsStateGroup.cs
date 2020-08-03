@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using n3bOptimizations.Multiplayer;
 using Sandbox;
 using Sandbox.Engine.Multiplayer;
+using Sandbox.Game.Entities;
 using Sandbox.Game.Replication.StateGroups;
 using VRage.Collections;
 using VRage.Library.Collections;
@@ -28,8 +28,6 @@ namespace n3bOptimizations.Replication.Inventory
 
         private ulong _lastFrame = 0;
 
-        public int Interval = 0;
-
         public int Batch { get; }
 
         public bool Scheduled { get; set; }
@@ -46,7 +44,7 @@ namespace n3bOptimizations.Replication.Inventory
 
             for (int i = 0; i < m_properties.Count; i++)
             {
-                m_propertyTimestamps.Add(MyMultiplayer.Static.ReplicationLayer.GetSimulationUpdateTime());
+                m_propertyTimestamps.Add(_server.GetSimulationUpdateTime());
             }
         }
 
@@ -54,7 +52,8 @@ namespace n3bOptimizations.Replication.Inventory
         {
             m_propertyTimestamps[sync.Id] = _server.GetSimulationUpdateTime();
             var counter = MySandboxGame.Static.SimulationFrameCounter;
-            if (_lastFrame + (uint) Interval > counter) InventoryReplicableUpdate.Schedule(this);
+            var isStatic = (Owner as InventoryReplicable).Instance?.Entity is MyCubeBlock block && block.CubeGrid.IsStatic;
+            if (isStatic && _lastFrame + (uint) InventoryReplicableUpdate.ReplicableInterval > counter) InventoryReplicableUpdate.Schedule(this);
             else
             {
                 InventoryReplicableUpdate.Reset(this);
@@ -69,9 +68,9 @@ namespace n3bOptimizations.Replication.Inventory
             _lastFrame = counter;
             if (m_properties.Count == 0) return;
 
-            foreach (KeyValuePair<Endpoint, ServerData.DataPerClient> keyValuePair in this.m_serverData.ServerClientData)
+            foreach (var clientData in _serverData.Values)
             {
-                keyValuePair.Value.DirtyProperties.Reset(true);
+                clientData.DirtyProperties.Reset(true);
             }
 
             _server.AddToDirtyGroups(this);
@@ -79,18 +78,14 @@ namespace n3bOptimizations.Replication.Inventory
 
         public void CreateClientData(MyClientStateBase forClient)
         {
-            ServerData.DataPerClient dataPerClient = new ServerData.DataPerClient();
-            m_serverData.ServerClientData.Add(forClient.EndpointId, dataPerClient);
-            if (m_properties.Count > 0)
-            {
-                dataPerClient.DirtyProperties.Reset(true);
-            }
+            var dataPerClient = new DataPerClient();
+            _serverData.Add(forClient.EndpointId, dataPerClient);
+            if (m_properties.Count > 0) dataPerClient.DirtyProperties.Reset(true);
         }
 
         public void DestroyClientData(MyClientStateBase forClient)
         {
-            if (!(forClient is CustomClientState state)) return;
-            m_serverData.ServerClientData.Remove(forClient.EndpointId);
+            _serverData.Remove(forClient.EndpointId);
         }
 
         public void ClientUpdate(MyTimeSpan clientTimestamp)
@@ -109,8 +104,7 @@ namespace n3bOptimizations.Replication.Inventory
         {
             if (!stream.Writing) return;
 
-            SmallBitField dirtyProperties;
-            dirtyProperties = m_serverData.ServerClientData[forClient].DirtyProperties;
+            var dirtyProperties = _serverData[forClient].DirtyProperties;
             stream.WriteUInt64(dirtyProperties.Bits, m_properties.Count);
 
             for (int i = 0; i < m_properties.Count; i++)
@@ -123,7 +117,7 @@ namespace n3bOptimizations.Replication.Inventory
 
             if (stream.BitPosition <= maxBitPosition)
             {
-                var dataPerClient = m_serverData.ServerClientData[forClient];
+                var dataPerClient = _serverData[forClient];
                 dataPerClient.SentProperties[packetId].Bits = dataPerClient.DirtyProperties.Bits;
                 dataPerClient.DirtyProperties.Bits = 0UL;
             }
@@ -131,8 +125,8 @@ namespace n3bOptimizations.Replication.Inventory
 
         public void OnAck(MyClientStateBase forClient, byte packetId, bool delivered)
         {
-            var dataPerClient = m_serverData.ServerClientData[forClient.EndpointId];
             if (delivered) return;
+            var dataPerClient = _serverData[forClient.EndpointId];
             var dataPerClient2 = dataPerClient;
             dataPerClient2.DirtyProperties.Bits = (dataPerClient2.DirtyProperties.Bits | dataPerClient.SentProperties[packetId].Bits);
             _server.AddToDirtyGroups(this);
@@ -148,7 +142,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         public bool IsStillDirty(Endpoint forClient)
         {
-            return m_serverData.ServerClientData[forClient].DirtyProperties.Bits > 0UL;
+            return _serverData[forClient].DirtyProperties.Bits > 0UL;
         }
 
         public MyStreamProcessingState IsProcessingForClient(Endpoint forClient)
@@ -168,25 +162,17 @@ namespace n3bOptimizations.Replication.Inventory
 
         public MyPropertySyncStateGroup.PriorityAdjustDelegate PriorityAdjust = (int frames, MyClientStateBase state, float priority) => priority;
 
-        private readonly ServerData m_serverData = new ServerData();
+        private readonly Dictionary<Endpoint, DataPerClient> _serverData = new Dictionary<Endpoint, DataPerClient>();
 
         private ListReader<SyncBase> m_properties;
 
         private readonly List<MyTimeSpan> m_propertyTimestamps;
 
-        private readonly MyTimeSpan m_invalidTimestamp = MyTimeSpan.FromTicks(long.MinValue);
-
-        private class ServerData
+        public class DataPerClient
         {
-            public readonly Dictionary<Endpoint, DataPerClient> ServerClientData =
-                new Dictionary<Endpoint, DataPerClient>();
+            public SmallBitField DirtyProperties = new SmallBitField(false);
 
-            public class DataPerClient
-            {
-                public SmallBitField DirtyProperties = new SmallBitField(false);
-
-                public readonly SmallBitField[] SentProperties = new SmallBitField[256];
-            }
+            public readonly SmallBitField[] SentProperties = new SmallBitField[256];
         }
 
         public delegate float PriorityAdjustDelegate(int frameCountWithoutSync, MyClientStateBase clientState, float basePriority);

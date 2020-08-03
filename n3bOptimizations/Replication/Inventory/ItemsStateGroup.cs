@@ -30,8 +30,6 @@ namespace n3bOptimizations.Replication.Inventory
 
         private ulong _lastFrame = 0;
 
-        public int Interval = 0;
-
         public bool Scheduled { get; set; }
 
         public int Batch { get; }
@@ -49,7 +47,7 @@ namespace n3bOptimizations.Replication.Inventory
         private void InventoryChanged(MyInventoryBase obj)
         {
             var counter = MySandboxGame.Static.SimulationFrameCounter;
-            if (_lastFrame + (uint) Interval > counter) InventoryReplicableUpdate.Schedule(this);
+            if (_lastFrame + (uint) InventoryReplicableUpdate.ReplicableInterval > counter) InventoryReplicableUpdate.Schedule(this);
             else
             {
                 InventoryReplicableUpdate.Reset(this);

@@ -41,9 +41,9 @@ namespace n3bOptimizations
                 try
                 {
 #endif
-                var obj = (IPatch) Activator.CreateInstance(t);
-                if (obj.Inject(harmony)) Log.Info($"{t.Name} applied");
-                else Log.Info($"{t.Name} skipped");
+                    var obj = (IPatch) Activator.CreateInstance(t);
+                    if (obj.Inject(harmony)) Log.Info($"{t.Name} applied");
+                    else Log.Info($"{t.Name} skipped");
 #if !DEBUG
                 }
                 catch (Exception e)
@@ -114,6 +114,17 @@ namespace n3bOptimizations
             {
                 Log.Warn(e, "Configuration failed to save");
             }
+        }
+
+        public static void Warn(string str)
+        {
+            Log.Warn($"n3bOptimizations: {str}");
+        }
+
+        public static void Error(string str, Exception e = null)
+        {
+            if (e != null) Log.Error(e, $"n3bOptimizations: {str}");
+            else Log.Error(e);
         }
     }
 }
