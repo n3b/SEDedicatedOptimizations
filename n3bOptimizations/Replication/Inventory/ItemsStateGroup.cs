@@ -38,7 +38,7 @@ namespace n3bOptimizations.Replication.Inventory
         {
             Inventory = entity;
             Batch = batch;
-            m_clientInventoryUpdate = new Dictionary<Endpoint, InventoryClientData>();
+            _serverData = new Dictionary<Endpoint, InventoryClientData>();
             Inventory.ContentsChanged += InventoryChanged;
             Owner = owner;
             _server = (MyReplicationServer) MyMultiplayer.Static.ReplicationLayer;
@@ -61,9 +61,9 @@ namespace n3bOptimizations.Replication.Inventory
             if (_lastFrame == counter) return;
             _lastFrame = counter;
 
-            foreach (KeyValuePair<Endpoint, InventoryClientData> keyValuePair in m_clientInventoryUpdate)
+            foreach (KeyValuePair<Endpoint, InventoryClientData> keyValuePair in _serverData)
             {
-                m_clientInventoryUpdate[keyValuePair.Key].Dirty = true;
+                _serverData[keyValuePair.Key].Dirty = true;
             }
 
             _server.AddToDirtyGroups(this);
@@ -76,19 +76,23 @@ namespace n3bOptimizations.Replication.Inventory
 
         public void RefreshClientData(Endpoint clientEndpoint)
         {
-            m_clientInventoryUpdate.Remove(clientEndpoint);
+            _serverData.Remove(clientEndpoint);
             CreateClientData(clientEndpoint);
         }
 
         private void CreateClientData(Endpoint clientEndpoint)
         {
-            if (!m_clientInventoryUpdate.TryGetValue(clientEndpoint, out var inventoryClientData))
+            if (!_serverData.TryGetValue(clientEndpoint, out var inventoryClientData))
             {
                 inventoryClientData = new InventoryClientData();
-                m_clientInventoryUpdate[clientEndpoint] = inventoryClientData;
+                _serverData[clientEndpoint] = inventoryClientData;
             }
 
             inventoryClientData.Dirty = false;
+            inventoryClientData.HasRights = !Plugin.StaticConfig.InventoryPreventSharing ||
+                                            (Owner as InventoryReplicable).HasRights(clientEndpoint.Id, ValidationType.Access | ValidationType.Ownership) ==
+                                            ValidationResult.Passed;
+
             foreach (MyPhysicalInventoryItem myPhysicalInventoryItem in Inventory.GetItems())
             {
                 MyFixedPoint amount = myPhysicalInventoryItem.Amount;
@@ -109,7 +113,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         public void DestroyClientData(MyClientStateBase forClient)
         {
-            m_clientInventoryUpdate.Remove(forClient.EndpointId);
+            _serverData.Remove(forClient.EndpointId);
         }
 
         public void ClientUpdate(MyTimeSpan clientTimestamp)
@@ -125,14 +129,9 @@ namespace n3bOptimizations.Replication.Inventory
         public void Serialize(BitStream stream, Endpoint forClient, MyTimeSpan serverTimestamp, MyTimeSpan lastClientTimestamp, byte packetId, int maxBitPosition,
             HashSet<string> cachedData)
         {
-            if (!stream.Writing)
-            {
-                ReadInventory(stream);
-                return;
-            }
+            if (!stream.Writing) return;
 
-            InventoryClientData inventoryClientData;
-            if (m_clientInventoryUpdate == null || !m_clientInventoryUpdate.TryGetValue(forClient, out inventoryClientData))
+            if (!_serverData.TryGetValue(forClient, out var data) || !data.HasRights)
             {
                 stream.WriteBool(false);
                 stream.WriteUInt32(0U, 32);
@@ -140,267 +139,35 @@ namespace n3bOptimizations.Replication.Inventory
             }
 
             bool flag = false;
-            if (inventoryClientData.FailedIncompletePackets.Count > 0)
+            if (data.FailedIncompletePackets.Count > 0)
             {
-                InventoryDeltaInformation inventoryDeltaInformation = inventoryClientData.FailedIncompletePackets[0];
-                inventoryClientData.FailedIncompletePackets.RemoveAtFast(0);
+                InventoryDeltaInformation inventoryDeltaInformation = data.FailedIncompletePackets[0];
+                data.FailedIncompletePackets.RemoveAtFast(0);
                 InventoryDeltaInformation value = WriteInventory(ref inventoryDeltaInformation, stream, packetId, maxBitPosition, out flag);
                 value.MessageId = inventoryDeltaInformation.MessageId;
                 if (flag)
                 {
-                    inventoryClientData.FailedIncompletePackets.Add(CreateSplit(ref inventoryDeltaInformation, ref value));
+                    data.FailedIncompletePackets.Add(CreateSplit(ref inventoryDeltaInformation, ref value));
                 }
 
-                inventoryClientData.SendPackets[packetId] = value;
+                data.SendPackets[packetId] = value;
                 return;
             }
 
-            InventoryDeltaInformation inventoryDeltaInformation2 = CalculateInventoryDiff(ref inventoryClientData);
-            inventoryDeltaInformation2.MessageId = inventoryClientData.CurrentMessageId;
-            inventoryClientData.MainSendingInfo = WriteInventory(ref inventoryDeltaInformation2, stream, packetId, maxBitPosition, out flag);
-            inventoryClientData.SendPackets[packetId] = inventoryClientData.MainSendingInfo;
-            inventoryClientData.CurrentMessageId += 1U;
+            InventoryDeltaInformation inventoryDeltaInformation2 = CalculateInventoryDiff(ref data);
+            inventoryDeltaInformation2.MessageId = data.CurrentMessageId;
+            data.MainSendingInfo = WriteInventory(ref inventoryDeltaInformation2, stream, packetId, maxBitPosition, out flag);
+            data.SendPackets[packetId] = data.MainSendingInfo;
+            data.CurrentMessageId += 1U;
             if (flag)
             {
-                InventoryDeltaInformation item = CreateSplit(ref inventoryDeltaInformation2, ref inventoryClientData.MainSendingInfo);
-                item.MessageId = inventoryClientData.CurrentMessageId;
-                inventoryClientData.FailedIncompletePackets.Add(item);
-                inventoryClientData.CurrentMessageId += 1U;
+                InventoryDeltaInformation item = CreateSplit(ref inventoryDeltaInformation2, ref data.MainSendingInfo);
+                item.MessageId = data.CurrentMessageId;
+                data.FailedIncompletePackets.Add(item);
+                data.CurrentMessageId += 1U;
             }
 
-            inventoryClientData.Dirty = false;
-        }
-
-        private void ReadInventory(BitStream stream)
-        {
-            bool flag = stream.ReadBool();
-            uint num = stream.ReadUInt32(32);
-            bool flag2 = true;
-            bool flag3 = false;
-            InventoryDeltaInformation inventoryDeltaInformation = default(InventoryDeltaInformation);
-            if (num == m_nextExpectedPacketId)
-            {
-                m_nextExpectedPacketId += 1U;
-                if (!flag)
-                {
-                    FlushBuffer();
-                    return;
-                }
-            }
-            else if (num > m_nextExpectedPacketId && !m_buffer.ContainsKey(num))
-            {
-                flag3 = true;
-                inventoryDeltaInformation.MessageId = num;
-            }
-            else
-            {
-                flag2 = false;
-            }
-
-            if (!flag)
-            {
-                if (flag3)
-                {
-                    m_buffer.Add(num, inventoryDeltaInformation);
-                }
-
-                return;
-            }
-
-            if (stream.ReadBool())
-            {
-                int num2 = stream.ReadInt32(32);
-                for (int i = 0; i < num2; i++)
-                {
-                    uint num3 = stream.ReadUInt32(32);
-                    MyFixedPoint myFixedPoint = default(MyFixedPoint);
-                    myFixedPoint.RawValue = stream.ReadInt64(64);
-                    if (flag2)
-                    {
-                        if (flag3)
-                        {
-                            if (inventoryDeltaInformation.ChangedItems == null)
-                            {
-                                inventoryDeltaInformation.ChangedItems = new Dictionary<uint, MyFixedPoint>();
-                            }
-
-                            inventoryDeltaInformation.ChangedItems.Add(num3, myFixedPoint);
-                        }
-                        else
-                        {
-                            Inventory.UpdateItemAmoutClient(num3, myFixedPoint);
-                        }
-                    }
-                }
-            }
-
-            if (stream.ReadBool())
-            {
-                int num4 = stream.ReadInt32(32);
-                for (int j = 0; j < num4; j++)
-                {
-                    uint num5 = stream.ReadUInt32(32);
-                    if (flag2)
-                    {
-                        if (flag3)
-                        {
-                            if (inventoryDeltaInformation.RemovedItems == null)
-                            {
-                                inventoryDeltaInformation.RemovedItems = new List<uint>();
-                            }
-
-                            inventoryDeltaInformation.RemovedItems.Add(num5);
-                        }
-                        else
-                        {
-                            Inventory.RemoveItemClient(num5);
-                        }
-                    }
-                }
-            }
-
-            if (stream.ReadBool())
-            {
-                int num6 = stream.ReadInt32(32);
-                for (int k = 0; k < num6; k++)
-                {
-                    int num7 = stream.ReadInt32(32);
-                    MyPhysicalInventoryItem myPhysicalInventoryItem;
-                    MySerializer.CreateAndRead<MyPhysicalInventoryItem>(stream, out myPhysicalInventoryItem, MyObjectBuilderSerializer.Dynamic);
-                    if (flag2)
-                    {
-                        if (flag3)
-                        {
-                            if (inventoryDeltaInformation.NewItems == null)
-                            {
-                                inventoryDeltaInformation.NewItems = new SortedDictionary<int, MyPhysicalInventoryItem>();
-                            }
-
-                            inventoryDeltaInformation.NewItems.Add(num7, myPhysicalInventoryItem);
-                        }
-                        else
-                        {
-                            Inventory.AddItemClient(num7, myPhysicalInventoryItem);
-                        }
-                    }
-                }
-            }
-
-            if (stream.ReadBool())
-            {
-                if (m_tmpSwappingList == null)
-                {
-                    m_tmpSwappingList = new Dictionary<int, MyPhysicalInventoryItem>();
-                }
-
-                int num8 = stream.ReadInt32(32);
-                for (int l = 0; l < num8; l++)
-                {
-                    uint num9 = stream.ReadUInt32(32);
-                    int num10 = stream.ReadInt32(32);
-                    if (flag2)
-                    {
-                        if (flag3)
-                        {
-                            if (inventoryDeltaInformation.SwappedItems == null)
-                            {
-                                inventoryDeltaInformation.SwappedItems = new Dictionary<uint, int>();
-                            }
-
-                            inventoryDeltaInformation.SwappedItems.Add(num9, num10);
-                        }
-                        else
-                        {
-                            MyPhysicalInventoryItem? itemByID = Inventory.GetItemByID(num9);
-                            if (itemByID != null)
-                            {
-                                m_tmpSwappingList.Add(num10, itemByID.Value);
-                            }
-                        }
-                    }
-                }
-
-                foreach (KeyValuePair<int, MyPhysicalInventoryItem> keyValuePair in m_tmpSwappingList)
-                {
-                    Inventory.ChangeItemClient(keyValuePair.Value, keyValuePair.Key);
-                }
-
-                m_tmpSwappingList.Clear();
-            }
-
-            if (flag3)
-            {
-                m_buffer.Add(num, inventoryDeltaInformation);
-            }
-            else if (flag2)
-            {
-                FlushBuffer();
-            }
-
-            Inventory.Refresh();
-        }
-
-        private void FlushBuffer()
-        {
-            while (m_buffer.Count > 0)
-            {
-                InventoryDeltaInformation inventoryDeltaInformation = m_buffer.Values[0];
-                if (inventoryDeltaInformation.MessageId != m_nextExpectedPacketId) break;
-                m_nextExpectedPacketId += 1U;
-                ApplyChangesOnClient(inventoryDeltaInformation);
-                m_buffer.RemoveAt(0);
-            }
-        }
-
-        private void ApplyChangesOnClient(InventoryDeltaInformation changes)
-        {
-            if (changes.ChangedItems != null)
-            {
-                foreach (KeyValuePair<uint, MyFixedPoint> keyValuePair in changes.ChangedItems)
-                {
-                    Inventory.UpdateItemAmoutClient(keyValuePair.Key, keyValuePair.Value);
-                }
-            }
-
-            if (changes.RemovedItems != null)
-            {
-                foreach (uint itemId in changes.RemovedItems)
-                {
-                    Inventory.RemoveItemClient(itemId);
-                }
-            }
-
-            if (changes.NewItems != null)
-            {
-                foreach (KeyValuePair<int, MyPhysicalInventoryItem> keyValuePair2 in changes.NewItems)
-                {
-                    Inventory.AddItemClient(keyValuePair2.Key, keyValuePair2.Value);
-                }
-            }
-
-            if (changes.SwappedItems != null)
-            {
-                if (m_tmpSwappingList == null)
-                {
-                    m_tmpSwappingList = new Dictionary<int, MyPhysicalInventoryItem>();
-                }
-
-                foreach (KeyValuePair<uint, int> keyValuePair3 in changes.SwappedItems)
-                {
-                    MyPhysicalInventoryItem? itemByID = Inventory.GetItemByID(keyValuePair3.Key);
-                    if (itemByID != null)
-                    {
-                        m_tmpSwappingList.Add(keyValuePair3.Value, itemByID.Value);
-                    }
-                }
-
-                foreach (KeyValuePair<int, MyPhysicalInventoryItem> keyValuePair4 in m_tmpSwappingList)
-                {
-                    Inventory.ChangeItemClient(keyValuePair4.Value, keyValuePair4.Key);
-                }
-
-                m_tmpSwappingList.Clear();
-            }
+            data.Dirty = false;
         }
 
         private InventoryDeltaInformation CalculateInventoryDiff(ref InventoryClientData clientData)
@@ -901,7 +668,7 @@ namespace n3bOptimizations.Replication.Inventory
         {
             InventoryClientData inventoryClientData;
             InventoryDeltaInformation item;
-            if (m_clientInventoryUpdate != null && m_clientInventoryUpdate.TryGetValue(forClient.EndpointId, out inventoryClientData) &&
+            if (_serverData != null && _serverData.TryGetValue(forClient.EndpointId, out inventoryClientData) &&
                 inventoryClientData.SendPackets.TryGetValue(packetId, out item))
             {
                 if (!delivered)
@@ -924,10 +691,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         public bool IsStillDirty(Endpoint forClient)
         {
-            return false;
-            InventoryClientData inventoryClientData;
-            return m_clientInventoryUpdate == null || !m_clientInventoryUpdate.TryGetValue(forClient, out inventoryClientData) || inventoryClientData.Dirty ||
-                   inventoryClientData.FailedIncompletePackets.Count != 0;
+            return _serverData.TryGetValue(forClient, out var data) && data.HasRights && (data.Dirty || data.FailedIncompletePackets.Count != 0);
         }
 
         public MyStreamProcessingState IsProcessingForClient(Endpoint forClient)
@@ -937,7 +701,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         private readonly int m_inventoryIndex;
 
-        private Dictionary<Endpoint, InventoryClientData> m_clientInventoryUpdate;
+        private Dictionary<Endpoint, InventoryClientData> _serverData;
 
         private List<MyPhysicalInventoryItem> m_itemsToSend;
 
@@ -986,6 +750,21 @@ namespace n3bOptimizations.Replication.Inventory
             public readonly SortedDictionary<uint, ClientInvetoryData> ClientItemsSorted = new SortedDictionary<uint, ClientInvetoryData>();
 
             public readonly List<ClientInvetoryData> ClientItems = new List<ClientInvetoryData>();
+
+            public bool HasRights = true;
+        }
+
+        public void UpdateOwnership()
+        {
+            foreach (var data in _serverData)
+            {
+                data.Value.HasRights = (Owner as InventoryReplicable).HasRights(data.Key.Id, ValidationType.Access | ValidationType.Ownership) == ValidationResult.Passed;
+            }
+        }
+
+        public bool HasRights(Endpoint endpoint)
+        {
+            return _serverData.TryGetValue(endpoint, out var data) && data.HasRights;
         }
     }
 }

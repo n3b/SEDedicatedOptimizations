@@ -30,6 +30,7 @@ namespace n3bOptimizations
             BindingOperations.GetBindingExpression(InventoryEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
             BindingOperations.GetBindingExpression(InventoryInterval, TextBox.TextProperty).UpdateTarget();
             BindingOperations.GetBindingExpression(InventoryBatches, TextBox.TextProperty).UpdateTarget();
+            BindingOperations.GetBindingExpression(InventoryPreventSharing, CheckBox.IsCheckedProperty).UpdateTarget();
 
             BindingOperations.GetBindingExpression(ProductionBlockEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
             Plugin.Save();

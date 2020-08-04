@@ -71,6 +71,9 @@
                         </TextBlock>
                     </Label>
                 </StackPanel>
+                <CheckBox Margin="3" Name="InventoryPreventSharing" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding InventoryPreventSharing}">
+                    <TextBlock MaxWidth="450" TextWrapping="WrapWithOverflow" Text="(Experimental) Prevent inventory contents from being sent to enemies (literally to everyone who has no access)" VerticalAlignment="Center" />
+                </CheckBox>
             </StackPanel>
         </GroupBox>
 

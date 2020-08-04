@@ -42,6 +42,7 @@ namespace n3bOptimizations.Replication.Inventory
             {
                 block.SlimBlock.CubeGridChanged += OnBlockCubeGridChanged;
                 m_parent = FindByObject(block.CubeGrid);
+                if (block is MyTerminalBlock tb && Plugin.StaticConfig.InventoryPreventSharing) tb.OwnershipChanged += OnOwnershipChanged;
             }
             else
             {
@@ -126,7 +127,17 @@ namespace n3bOptimizations.Replication.Inventory
         {
             InventoryReplicableUpdate.Reset(itemsGroup);
             InventoryReplicableUpdate.Reset(propsGroup);
-            if (Instance?.Owner is MyCubeBlock block) block.SlimBlock.CubeGridChanged -= OnBlockCubeGridChanged;
+            if (Instance?.Owner is MyCubeBlock block)
+            {
+                block.SlimBlock.CubeGridChanged -= OnBlockCubeGridChanged;
+                if (block is MyTerminalBlock tb)
+                {
+                    tb.OwnershipChanged -= OnOwnershipChanged;
+                    InventoryReplicableUpdate.ResetChangedOwnership(itemsGroup);
+                    InventoryReplicableUpdate.ResetChangedOwnership(propsGroup);
+                }
+            }
+
             RaiseDestroyed();
         }
 
@@ -155,6 +166,12 @@ namespace n3bOptimizations.Replication.Inventory
         {
             itemsGroup.MarkDirty();
             propsGroup.MarkDirty();
+        }
+
+        public void OnOwnershipChanged(MyTerminalBlock block)
+        {
+            InventoryReplicableUpdate.OnChangedOwnership(itemsGroup);
+            InventoryReplicableUpdate.OnChangedOwnership(propsGroup);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using n3bOptimizations.Util;
 using Sandbox;
 
 namespace n3bOptimizations.Replication.Inventory
@@ -17,6 +18,8 @@ namespace n3bOptimizations.Replication.Inventory
         private static List<HashSet<IMarkDirty>> _dirty;
 
         public static int ReplicableInterval => _batches * _interval;
+
+        private static ConcurrentHashSet<IMarkDirty> _changedOwnership = new ConcurrentHashSet<IMarkDirty>();
 
         public static void Init()
         {
@@ -69,6 +72,8 @@ namespace n3bOptimizations.Replication.Inventory
         {
             try
             {
+                ApplyChangedOwnership();
+
                 if (!_enabled) return;
                 var counter = MySandboxGame.Static.SimulationFrameCounter;
                 if (_lastFrame + (uint) _interval > counter) return;
@@ -94,6 +99,27 @@ namespace n3bOptimizations.Replication.Inventory
                 Plugin.Log.Error(e);
             }
         }
+
+        static void ApplyChangedOwnership()
+        {
+            while (_changedOwnership.Count > 0)
+            {
+                var item = _changedOwnership.First();
+                if (!_changedOwnership.TryRemove(item)) continue;
+                item.UpdateOwnership();
+                item.MarkDirty();
+            }
+        }
+
+        public static void OnChangedOwnership(IMarkDirty group)
+        {
+            _changedOwnership.Add(group);
+        }
+
+        public static void ResetChangedOwnership(IMarkDirty group)
+        {
+            _changedOwnership.TryRemove(group);
+        }
     }
 
     public interface IMarkDirty
@@ -101,5 +127,6 @@ namespace n3bOptimizations.Replication.Inventory
         public int Batch { get; }
         public bool Scheduled { get; set; }
         public void MarkDirty();
+        public void UpdateOwnership();
     }
 }

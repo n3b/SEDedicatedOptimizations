@@ -52,6 +52,7 @@ namespace n3bOptimizations
         private bool inventoryEnabled = true;
         private int inventoryInterval = 5;
         private int inventoryBatches = 5;
+        private bool inventoryPreventSharing = false;
 
         public bool InventoryEnabled
         {
@@ -69,6 +70,12 @@ namespace n3bOptimizations
         {
             get => inventoryBatches;
             set => SetValue(ref inventoryBatches, Math.Max(Math.Min(value, 20), 1));
+        }
+
+        public bool InventoryPreventSharing
+        {
+            get => inventoryPreventSharing;
+            set => SetValue(ref inventoryPreventSharing, value);
         }
     }
 }

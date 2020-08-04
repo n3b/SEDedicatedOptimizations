@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using n3bOptimizations.Multiplayer;
 using n3bOptimizations.Replication.Inventory;
 using Sandbox.Game;
-using VRage;
 using VRage.Network;
-using VRageMath;
 
 namespace n3bOptimizations.Patch.Inventory
 {
@@ -48,6 +45,7 @@ namespace n3bOptimizations.Patch.Inventory
             {
                 if (!(groupEntry.Group is ItemsStateGroup group)) return true;
                 var state = (CustomClientState) _stateInfo.GetValue(client);
+                if (!group.HasRights(state.EndpointId)) return false;
                 return state.IsSubscribedToInventory(group.Inventory);
             }
             catch (Exception e)

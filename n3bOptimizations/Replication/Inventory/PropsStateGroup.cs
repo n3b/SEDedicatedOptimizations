@@ -32,6 +32,8 @@ namespace n3bOptimizations.Replication.Inventory
 
         public bool Scheduled { get; set; }
 
+        const int VOLUME_PROP_INDEX = 1;
+
         public PropsStateGroup(InventoryReplicable owner, SyncType syncType, int batch)
         {
             Owner = owner;
@@ -81,6 +83,9 @@ namespace n3bOptimizations.Replication.Inventory
             var dataPerClient = new DataPerClient();
             _serverData.Add(forClient.EndpointId, dataPerClient);
             if (m_properties.Count > 0) dataPerClient.DirtyProperties.Reset(true);
+            dataPerClient.HasRights = !Plugin.StaticConfig.InventoryPreventSharing ||
+                                      (Owner as InventoryReplicable).HasRights(forClient.EndpointId.Id, ValidationType.Access | ValidationType.Ownership) ==
+                                      ValidationResult.Passed;
         }
 
         public void DestroyClientData(MyClientStateBase forClient)
@@ -104,7 +109,15 @@ namespace n3bOptimizations.Replication.Inventory
         {
             if (!stream.Writing) return;
 
-            var dirtyProperties = _serverData[forClient].DirtyProperties;
+            if (!_serverData.TryGetValue(forClient, out var data))
+            {
+                var bits = new SmallBitField(false);
+                stream.WriteUInt64(bits.Bits, 0);
+                return;
+            }
+
+            var dirtyProperties = data.DirtyProperties;
+            if (!data.HasRights) dirtyProperties[VOLUME_PROP_INDEX] = false;
             stream.WriteUInt64(dirtyProperties.Bits, m_properties.Count);
 
             for (int i = 0; i < m_properties.Count; i++)
@@ -142,7 +155,7 @@ namespace n3bOptimizations.Replication.Inventory
 
         public bool IsStillDirty(Endpoint forClient)
         {
-            return _serverData[forClient].DirtyProperties.Bits > 0UL;
+            return _serverData.TryGetValue(forClient, out var data) && data.HasRights && data.DirtyProperties.Bits > 0UL;
         }
 
         public MyStreamProcessingState IsProcessingForClient(Endpoint forClient)
@@ -173,8 +186,18 @@ namespace n3bOptimizations.Replication.Inventory
             public SmallBitField DirtyProperties = new SmallBitField(false);
 
             public readonly SmallBitField[] SentProperties = new SmallBitField[256];
+
+            public bool HasRights = true;
         }
 
         public delegate float PriorityAdjustDelegate(int frameCountWithoutSync, MyClientStateBase clientState, float basePriority);
+
+        public void UpdateOwnership()
+        {
+            foreach (var data in _serverData)
+            {
+                data.Value.HasRights = (Owner as InventoryReplicable).HasRights(data.Key.Id, ValidationType.Access | ValidationType.Ownership) == ValidationResult.Passed;
+            }
+        }
     }
 }
