@@ -3,7 +3,6 @@ using System.Reflection;
 using HarmonyLib;
 using ParallelTasks;
 using Sandbox;
-using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Blocks;
 
 namespace n3bOptimizations.Patch.GasTank
@@ -25,8 +24,7 @@ namespace n3bOptimizations.Patch.GasTank
         public static bool ChangeFillRatioAmountPrefix(ref MyGasTank __instance, double newFilledRatio)
         {
             var oldRatio = __instance.FilledRatio;
-            var res = (bool) ChangeFilledRatio.Invoke(__instance, new object[] {newFilledRatio, false});
-            if (res) __instance.GetInventory(0).UpdateGasAmount();
+            ChangeFilledRatio.Invoke(__instance, new object[] {newFilledRatio, false});
 
             // dispatch immediately
             if (oldRatio > newFilledRatio && newFilledRatio < threshold1 && newFilledRatio * 2 - oldRatio < threshold2)
