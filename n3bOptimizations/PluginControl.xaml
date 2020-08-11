@@ -97,12 +97,12 @@
             </StackPanel>
         </GroupBox>
         
-        <GroupBox Header="Safe Zones Caching" Margin="10" Padding="10" Grid.Row="5">
+        <GroupBox Header="Safe Zones" Margin="10" Padding="10" Grid.Row="5">
             <StackPanel>
                 <CheckBox Margin="3" Name="SafeZoneCachingEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding SafeZoneCachingEnabled}">
                     <TextBlock Text="Enabled" VerticalAlignment="Center" />
                 </CheckBox>
-                <TextBlock TextWrapping="Wrap">Improves performance of all tools in world when at least one Safe Zone is simulated and allows that particular action (i.e. SZ allows drilling - all drills will perform better)</TextBlock>
+                <TextBlock TextWrapping="Wrap">Improves performance of all tools and weapons in a world when at least one Safe Zone is simulated and allows that particular action (i.e. SZ allows drilling - all drills will perform better). But it doesn't affect tools inside Safe Zone.</TextBlock>
             </StackPanel>
         </GroupBox>
 
