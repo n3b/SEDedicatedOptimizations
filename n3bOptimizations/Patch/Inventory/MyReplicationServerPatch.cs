@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using HarmonyLib;
-using n3bOptimizations.Multiplayer;
 using n3bOptimizations.Replication.Inventory;
-using Sandbox.Game;
 using VRage.Network;
 
 namespace n3bOptimizations.Patch.Inventory
@@ -32,9 +30,9 @@ namespace n3bOptimizations.Patch.Inventory
             patch = AccessTools.Method(typeof(MyReplicationServerPatch), "ScheduleStateGroupSyncPrefix");
             harmony.Patch(source, new HarmonyMethod(patch));
 
-            source = AccessTools.Method(typeof(MyReplicationServer), "ShouldSendEvent");
-            patch = AccessTools.Method(typeof(MyReplicationServerPatch), "ShouldSendEventPrefix");
-            harmony.Patch(source, new HarmonyMethod(patch));
+            // source = AccessTools.Method(typeof(MyReplicationServer), "ShouldSendEvent");
+            // patch = AccessTools.Method(typeof(MyReplicationServerPatch), "ShouldSendEventPrefix");
+            // harmony.Patch(source, new HarmonyMethod(patch));
 
             return true;
         }
@@ -44,9 +42,9 @@ namespace n3bOptimizations.Patch.Inventory
             try
             {
                 if (!(groupEntry.Group is ItemsStateGroup group)) return true;
-                var state = (CustomClientState) _stateInfo.GetValue(client);
-                if (!group.HasRights(state.EndpointId)) return false;
-                return state.IsSubscribedToInventory(group.Inventory);
+                var state = (MyClientStateBase) _stateInfo.GetValue(client);
+                return group.HasRights(state.EndpointId);
+                // return state.IsSubscribedToInventory(group.Inventory);
             }
             catch (Exception e)
             {
@@ -55,21 +53,21 @@ namespace n3bOptimizations.Patch.Inventory
             }
         }
 
-        public static bool ShouldSendEventPrefix(IMyNetObject eventInstance, object client)
-        {
-            try
-            {
-                if (!(eventInstance is IMyProxyTarget proxyTarget && proxyTarget.Target is MyInventory inventory)) return true;
-                var state = (CustomClientState) _stateInfo.GetValue(client);
-                return state.IsSubscribedToInventory(inventory);
-            }
-            catch (Exception e)
-            {
-                Plugin.Error("", e);
-            }
-
-            return true;
-        }
+        // public static bool ShouldSendEventPrefix(IMyNetObject eventInstance, object client)
+        // {
+        //     try
+        //     {
+        //         if (!(eventInstance is IMyProxyTarget proxyTarget && proxyTarget.Target is MyInventory inventory)) return true;
+        //         var state = (CustomClientState) _stateInfo.GetValue(client);
+        //         return state.IsSubscribedToInventory(inventory);
+        //     }
+        //     catch (Exception e)
+        //     {
+        //         Plugin.Error("", e);
+        //     }
+        //
+        //     return true;
+        // }
 
 
 #if DEBUG

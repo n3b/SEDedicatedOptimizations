@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using System;
+using HarmonyLib;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
 using VRage.Game.Entity;
@@ -43,7 +44,16 @@ namespace n3bOptimizations.Patch.SafeZone
             patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "RemoveEntityInternalPostfix");
             harmony.Patch(source, null, new HarmonyMethod(patch));
 
+            var ctor = typeof(MyEntity).GetConstructor(new Type[] { });
+            patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "EntityCtor");
+            harmony.Patch(ctor, null, new HarmonyMethod(patch));
+
             return true;
+        }
+
+        public static void EntityCtor(MyEntity __instance)
+        {
+            if (__instance is MyCubeGrid || __instance is MyCharacter) __instance.InitSafeZoneCompanion();
         }
     }
 }

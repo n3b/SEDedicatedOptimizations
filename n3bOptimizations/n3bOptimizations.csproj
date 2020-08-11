@@ -109,7 +109,7 @@
         <Compile Include="Patch\GridConveyor\MyGridConveyorSystemPatch.cs"/>
         <Compile Include="Patch\Inventory\MyReplicationServerPatch.cs"/>
         <Compile Include="Patch\Inventory\MyProductionBLockPatch.cs"/>
-        <Compile Include="Patch\SafeZone\MyEntityExtension.cs"/>
+        <Compile Include="Patch\SafeZone\MyEntityExtensions.cs"/>
         <Compile Include="Patch\SafeZone\MySessionComponentSafeZonesPatch.cs"/>
         <Compile Include="Plugin.cs"/>
         <Compile Include="PluginConfig.cs"/>
