@@ -33,6 +33,11 @@ namespace n3bOptimizations
             BindingOperations.GetBindingExpression(InventoryPreventSharing, CheckBox.IsCheckedProperty).UpdateTarget();
 
             BindingOperations.GetBindingExpression(ProductionBlockEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
+
+            BindingOperations.GetBindingExpression(ConveyorCachingEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
+
+            BindingOperations.GetBindingExpression(SafeZoneCachingEnabled, CheckBox.IsCheckedProperty).UpdateTarget();
+
             Plugin.Save();
         }
     }

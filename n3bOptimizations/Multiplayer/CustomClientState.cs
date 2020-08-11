@@ -43,7 +43,7 @@ namespace n3bOptimizations.Multiplayer
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
+                Plugin.Error("Subscription error", e);
             }
         }
 

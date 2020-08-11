@@ -50,7 +50,7 @@ namespace n3bOptimizations.Replication.Inventory
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
+                Plugin.Error("", e);
             }
         }
 
@@ -64,7 +64,7 @@ namespace n3bOptimizations.Replication.Inventory
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
+                Plugin.Error("", e);
             }
         }
 
@@ -95,8 +95,7 @@ namespace n3bOptimizations.Replication.Inventory
             }
             catch (Exception e)
             {
-                Plugin.Log.Error("Unable to process inventories update");
-                Plugin.Log.Error(e);
+                Plugin.Error("Unable to process inventories update", e);
             }
         }
 

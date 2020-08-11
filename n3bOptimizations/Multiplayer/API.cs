@@ -34,7 +34,7 @@ namespace n3b.SEMultiplayer
                 Plugin.Log.Warn("got magic message");
 #endif
             }
-            else Plugin.Log.Warn("Got unexpected data from client");
+            else Plugin.Warn("Got unexpected data from client");
 
             return false;
         }
@@ -43,7 +43,7 @@ namespace n3b.SEMultiplayer
         {
             if (!(MyEventContext.Current.ClientState is CustomClientState state))
             {
-                Plugin.Log.Error($"Invalid client state!");
+                Plugin.Error($"Invalid client state!");
                 throw new ConstraintException($"Invalid client state!");
             }
 
@@ -61,8 +61,7 @@ namespace n3b.SEMultiplayer
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
-                return;
+                Plugin.Error("Error reading proto msg", e);
             }
         }
 
@@ -82,7 +81,7 @@ namespace n3b.SEMultiplayer
 
                     if (entity == null)
                     {
-                        Plugin.Log.Warn($"Attempting to subscribe to unknown inventory entity");
+                        Plugin.Warn($"Attempting to subscribe to unknown inventory entity");
                         continue;
                     }
 
@@ -94,7 +93,7 @@ namespace n3b.SEMultiplayer
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.Error(e);
+                    Plugin.Error("Inventory subscription error", e);
                 }
             }
         }

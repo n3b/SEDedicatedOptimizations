@@ -106,8 +106,11 @@
         <Compile Include="Patch\GasTank\GasTankLogicComponent.cs"/>
         <Compile Include="Patch\GasTank\GasTankPatch.cs"/>
         <Compile Include="Patch\GasTank\UpdateWork.cs"/>
+        <Compile Include="Patch\GridConveyor\MyGridConveyorSystemPatch.cs"/>
         <Compile Include="Patch\Inventory\MyReplicationServerPatch.cs"/>
         <Compile Include="Patch\Inventory\MyProductionBLockPatch.cs"/>
+        <Compile Include="Patch\SafeZone\MyEntityExtension.cs"/>
+        <Compile Include="Patch\SafeZone\MySessionComponentSafeZonesPatch.cs"/>
         <Compile Include="Plugin.cs"/>
         <Compile Include="PluginConfig.cs"/>
         <Compile Include="PluginControl.xaml.cs">
@@ -120,6 +123,7 @@
         <Compile Include="Replication\Inventory\ItemsStateGroup.cs"/>
         <Compile Include="Replication\Inventory\PropsStateGroup.cs"/>
         <Compile Include="Test.cs"/>
+        <Compile Include="TestPatch.cs"/>
         <Compile Include="Util\ConcurrentHashSet.cs"/>
         <Compile Include="Util\Extensions.cs"/>
         <Compile Include="Util\TimerUtil.cs"/>

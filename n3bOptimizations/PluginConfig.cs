@@ -77,5 +77,21 @@ namespace n3bOptimizations
             get => inventoryPreventSharing;
             set => SetValue(ref inventoryPreventSharing, value);
         }
+
+        private bool conveyorCachingEnabled = true;
+
+        public bool ConveyorCachingEnabled
+        {
+            get => conveyorCachingEnabled;
+            set => SetValue(ref conveyorCachingEnabled, value);
+        }
+
+        private bool safeZoneCachingEnabled = true;
+
+        public bool SafeZoneCachingEnabled
+        {
+            get => safeZoneCachingEnabled;
+            set => SetValue(ref safeZoneCachingEnabled, value);
+        }
     }
 }

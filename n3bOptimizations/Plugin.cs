@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using HarmonyLib;
-using n3b.SEMultiplayer;
 using n3bOptimizations.Patch.GasTank;
 using n3bOptimizations.Replication.Inventory;
 using NLog;
@@ -23,7 +22,7 @@ namespace n3bOptimizations
     {
         public static PluginConfig StaticConfig;
 
-        public static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        static readonly Logger Log = LogManager.GetCurrentClassLogger();
         private Persistent<PluginConfig> _config;
         public PluginConfig Config => _config?.Data;
         private PluginControl _control;
@@ -42,13 +41,13 @@ namespace n3bOptimizations
                 {
 #endif
                     var obj = (IPatch) Activator.CreateInstance(t);
-                    if (obj.Inject(harmony)) Log.Info($"{t.Name} applied");
-                    else Log.Info($"{t.Name} skipped");
+                    if (obj.Inject(harmony)) Info($"{t.Name} applied");
+                    else Info($"{t.Name} skipped");
 #if !DEBUG
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, $"Unable to apply {t}");
+                    Error($"Unable to apply {t}", e);
                 }
 #endif
             }
@@ -72,7 +71,8 @@ namespace n3bOptimizations
         void GameStateChanged(MySandboxGame game, TorchGameState state)
         {
             if (state != TorchGameState.Created) return;
-            API.Register();
+            // not necessary after 1.196
+            // API.Register();
         }
 
         void SessionStateChanged(ITorchSession session, TorchSessionState newState)
@@ -114,6 +114,11 @@ namespace n3bOptimizations
             {
                 Log.Warn(e, "Configuration failed to save");
             }
+        }
+
+        public static void Info(string str)
+        {
+            Log.Info($"n3bOptimizations: {str}");
         }
 
         public static void Warn(string str)

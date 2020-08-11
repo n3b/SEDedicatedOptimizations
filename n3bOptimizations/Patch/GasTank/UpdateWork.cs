@@ -27,7 +27,7 @@ namespace n3bOptimizations.Patch.GasTank
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.Error(e);
+                    Plugin.Error("Gas tanks processing error", e);
                 }
             }
         }

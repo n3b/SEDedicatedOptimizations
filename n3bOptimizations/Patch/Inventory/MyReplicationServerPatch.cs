@@ -50,7 +50,7 @@ namespace n3bOptimizations.Patch.Inventory
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
+                Plugin.Error("", e);
                 return true;
             }
         }
@@ -65,7 +65,7 @@ namespace n3bOptimizations.Patch.Inventory
             }
             catch (Exception e)
             {
-                Plugin.Log.Error(e);
+                Plugin.Error("", e);
             }
 
             return true;

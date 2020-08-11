@@ -15,6 +15,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="15">
@@ -83,6 +85,24 @@
                     <TextBlock Text="Enabled" VerticalAlignment="Center" />
                 </CheckBox>
                 <TextBlock TextWrapping="Wrap">When enabled it stops Refineries from spawning large amount of production queue events, that don't seem to be used anywhere.</TextBlock>
+            </StackPanel>
+        </GroupBox>
+        
+        <GroupBox Header="Conveyor" Margin="10" Padding="10" Grid.Row="4">
+            <StackPanel>
+                <CheckBox Margin="3" Name="ConveyorCachingEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding ConveyorCachingEnabled}">
+                    <TextBlock Text="Enabled" VerticalAlignment="Center" />
+                </CheckBox>
+                <TextBlock TextWrapping="Wrap">Cache conveyor endpoints to prevent hydrogen thrusters traversing over conveyor every frame when thrust is applied (~62 loops per second per thruster).</TextBlock>
+            </StackPanel>
+        </GroupBox>
+        
+        <GroupBox Header="Safe Zones Caching" Margin="10" Padding="10" Grid.Row="5">
+            <StackPanel>
+                <CheckBox Margin="3" Name="SafeZoneCachingEnabled" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="{Binding SafeZoneCachingEnabled}">
+                    <TextBlock Text="Enabled" VerticalAlignment="Center" />
+                </CheckBox>
+                <TextBlock TextWrapping="Wrap">Improves performance of all tools in world when at least one Safe Zone is simulated and allows that particular action (i.e. SZ allows drilling - all drills will perform better)</TextBlock>
             </StackPanel>
         </GroupBox>
 
