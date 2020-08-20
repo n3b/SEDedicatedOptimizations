@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using Sandbox.Game.Entities;
 using VRage.Game.Entity;
+using VRage.Utils;
 
 namespace n3bOptimizations.Patch.SafeZone
 {
@@ -11,19 +12,34 @@ namespace n3bOptimizations.Patch.SafeZone
 
         public static MySafeZone? GetSafeZone(this MyEntity @this)
         {
-            if (!_comps.TryGetValue(@this, out var companion)) return null;
-            return !companion.ZoneRef.TryGetTarget(out var zone) ? null : zone;
+            try
+            {
+                _comps.TryGetValue(@this, out var companion);
+                companion.ZoneRef.TryGetTarget(out var zone);
+                return zone;
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLine(e);
+                return null;
+            }
         }
 
         public static void SetSafeZone(this MyEntity @this, MySafeZone zone = null)
         {
-            if (!_comps.TryGetValue(@this, out var companion)) return;
-            companion.ZoneRef = new WeakReference<MySafeZone>(zone);
+            try
+            {
+                _comps.TryGetValue(@this, out var companion);
+                companion.ZoneRef = new WeakReference<MySafeZone>(zone);
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLine(e);
+            }
         }
 
         public static void InitSafeZoneCompanion(this MyEntity @this)
         {
-            _comps.Remove(@this);
             _comps.Add(@this, new Companion());
         }
 

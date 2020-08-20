@@ -5,12 +5,15 @@ using n3bOptimizations.Util;
 using Sandbox.Game.Entities;
 using Sandbox.Game.GameSystems;
 using Sandbox.Game.GameSystems.Conveyors;
+using SEClientFixes.Util;
 
 namespace n3bOptimizations.Patch.GridConveyor
 {
     public class MyGridConveyorSystemPatch : IPatch
     {
         static readonly ConditionalWeakTable<MyGridConveyorSystem, Companion> Conveyors = new ConditionalWeakTable<MyGridConveyorSystem, Companion>();
+
+        static TimerUtil _timer = new TimerUtil();
 
         public bool Inject(Harmony harmony)
         {
@@ -70,12 +73,6 @@ namespace n3bOptimizations.Patch.GridConveyor
             public Companion(MyGridConveyorSystem conveyor)
             {
             }
-        }
-
-        static Exception Finalizer(Exception __exception)
-        {
-            Plugin.Error("", __exception);
-            return null;
         }
     }
 }

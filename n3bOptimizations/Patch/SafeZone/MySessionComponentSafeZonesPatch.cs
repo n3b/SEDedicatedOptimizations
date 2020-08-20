@@ -19,8 +19,9 @@ namespace n3bOptimizations.Patch.SafeZone
         public static void InsertEntityInternalPostfix(MyEntity entity, ref MySafeZone __instance, ref bool __result)
         {
             if (!__result) return;
-            var top = entity.GetTopMostParent(null);
+            var top = entity.GetTopMostParent();
             if (top is MyCubeGrid || top is MyCharacter) top.SetSafeZone(__instance);
+            if (entity is MyCharacter) entity.SetSafeZone(__instance);
         }
 
         public static void RemoveEntityInternalPostfix(MyEntity entity, ref bool __result)
@@ -31,6 +32,8 @@ namespace n3bOptimizations.Patch.SafeZone
 
         public bool Inject(Harmony harmony)
         {
+            if (!Plugin.StaticConfig.SafeZoneCachingEnabled) return false;
+
             var source = AccessTools.Method(typeof(MySessionComponentSafeZones), "IsActionAllowed",
                 new[] {typeof(MyEntity), typeof(MySafeZoneAction), typeof(long), typeof(ulong)});
             var patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "IsActionAllowedPrefix");
