@@ -2,6 +2,7 @@
 using HarmonyLib;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
+using VRage.Collections;
 using VRage.Game.Entity;
 using VRage.Game.ObjectBuilders.Components;
 
@@ -20,14 +21,19 @@ namespace n3bOptimizations.Patch.SafeZone
         {
             if (!__result) return;
             var top = entity.GetTopMostParent();
-            if (top is MyCubeGrid || top is MyCharacter) top.SetSafeZone(__instance);
-            if (entity is MyCharacter) entity.SetSafeZone(__instance);
+            top.SetSafeZone(__instance);
         }
 
         public static void RemoveEntityInternalPostfix(MyEntity entity, ref bool __result)
         {
             if (!__result) return;
-            if (entity is MyCubeGrid || entity is MyCharacter) entity.SetSafeZone();
+            entity.SetSafeZone();
+        }
+
+        public static void InsertEntity_ImplementationPostfix(long entityId, ref MyConcurrentHashSet<long> ___m_containedEntities, ref MySafeZone __instance)
+        {
+            if (___m_containedEntities.Contains(entityId)) return;
+            if (MyEntities.TryGetEntityById(entityId, out var top)) top.SetSafeZone(__instance);
         }
 
         public bool Inject(Harmony harmony)
@@ -47,9 +53,14 @@ namespace n3bOptimizations.Patch.SafeZone
             patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "RemoveEntityInternalPostfix");
             harmony.Patch(source, null, new HarmonyMethod(patch));
 
+            source = AccessTools.Method(typeof(MySafeZone), "InsertEntity_Implementation");
+            patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "InsertEntity_ImplementationPostfix");
+            harmony.Patch(source, null, new HarmonyMethod(patch));
+
             var ctor = typeof(MyEntity).GetConstructor(new Type[] { });
             patch = AccessTools.Method(typeof(MySessionComponentSafeZonesPatch), "EntityCtor");
             harmony.Patch(ctor, null, new HarmonyMethod(patch));
+
 
             return true;
         }
