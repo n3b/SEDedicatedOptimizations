@@ -6,7 +6,6 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Replication;
 using VRage.Game.Components;
-using VRage.Game.Entity;
 using VRage.Library.Collections;
 using VRage.Network;
 using VRage.Serialization;
@@ -16,13 +15,12 @@ namespace n3bOptimizations.Replication.Inventory
 {
     public class InventoryReplicable : MyExternalReplicableEvent<MyInventory>
     {
-        private PropsStateGroup propsGroup;
+        ItemsStateGroup itemsGroup;
 
-        private ItemsStateGroup itemsGroup;
+        long m_entityId;
 
-        private long m_entityId;
-
-        private int m_inventoryId;
+        int m_inventoryId;
+        PropsStateGroup propsGroup;
 
         public override bool HasToBeChild => true;
 
@@ -50,7 +48,7 @@ namespace n3bOptimizations.Replication.Inventory
             }
         }
 
-        private void OnBlockCubeGridChanged(MySlimBlock slimBlock, MyCubeGrid grid)
+        void OnBlockCubeGridChanged(MySlimBlock slimBlock, MyCubeGrid grid)
         {
             m_parent = FindByObject((Instance.Owner as MyCubeBlock)?.CubeGrid);
             (MyMultiplayer.ReplicationLayer as MyReplicationLayer).RefreshReplicableHierarchy(this);
@@ -64,17 +62,15 @@ namespace n3bOptimizations.Replication.Inventory
 
         public override bool OnSave(BitStream stream, Endpoint clientEndpoint)
         {
-            long entityId = Instance.Owner.EntityId;
-            MySerializer.Write(stream, ref entityId, null);
-            int num = 0;
-            for (int i = 0; i < Instance.Owner.InventoryCount; i++)
-            {
+            var entityId = Instance.Owner.EntityId;
+            MySerializer.Write(stream, ref entityId);
+            var num = 0;
+            for (var i = 0; i < Instance.Owner.InventoryCount; i++)
                 if (Instance == Instance.Owner.GetInventory(i))
                 {
                     num = i;
                     break;
                 }
-            }
 
             MySerializer.Write(stream, ref num);
             return true;
@@ -84,23 +80,19 @@ namespace n3bOptimizations.Replication.Inventory
         {
             if (stream != null)
             {
-                MySerializer.CreateAndRead(stream, out m_entityId, null);
-                MySerializer.CreateAndRead(stream, out m_inventoryId, null);
+                MySerializer.CreateAndRead(stream, out m_entityId);
+                MySerializer.CreateAndRead(stream, out m_inventoryId);
             }
 
-            MyEntities.CallAsync(delegate() { LoadAsync(loadingDoneHandler); });
+            MyEntities.CallAsync(delegate { LoadAsync(loadingDoneHandler); });
         }
 
-        private void LoadAsync(Action<MyInventory> loadingDoneHandler)
+        void LoadAsync(Action<MyInventory> loadingDoneHandler)
         {
-            MyEntity myEntity;
-            MyEntities.TryGetEntityById(m_entityId, out myEntity, false);
+            MyEntities.TryGetEntityById(m_entityId, out var entity);
             MyInventory obj = null;
-            MyEntity myEntity2 = (myEntity != null && myEntity.HasInventory) ? myEntity : null;
-            if (myEntity2 != null && !myEntity2.GetTopMostParent(null).MarkedForClose)
-            {
-                obj = myEntity2.GetInventory(m_inventoryId);
-            }
+            var entity2 = entity != null && entity.HasInventory ? entity : null;
+            if (entity2 != null && !entity2.GetTopMostParent().MarkedForClose) obj = entity2.GetInventory(m_inventoryId);
 
             loadingDoneHandler(obj);
         }
@@ -119,11 +111,11 @@ namespace n3bOptimizations.Replication.Inventory
 
         public override string ToString()
         {
-            string str = (Instance != null) ? ((Instance.Owner != null) ? Instance.Owner.EntityId.ToString() : "<owner null>") : "<inventory null>";
+            string str = Instance != null ? Instance.Owner != null ? Instance.Owner.EntityId.ToString() : "<owner null>" : "<inventory null>";
             return string.Format("MyInventoryReplicable, Owner id: " + str, Array.Empty<object>());
         }
 
-        private void OnRemovedFromContainer(MyEntityComponentBase obj)
+        void OnRemovedFromContainer(MyEntityComponentBase obj)
         {
             InventoryReplicableUpdate.Reset(itemsGroup);
             InventoryReplicableUpdate.Reset(propsGroup);
@@ -149,12 +141,7 @@ namespace n3bOptimizations.Replication.Inventory
         public override ValidationResult HasRights(EndpointId endpointId, ValidationType validationFlags)
         {
             MyExternalReplicable myExternalReplicable = FindByObject(Instance.Owner);
-            if (myExternalReplicable != null)
-            {
-                return myExternalReplicable.HasRights(endpointId, validationFlags);
-            }
-
-            return base.HasRights(endpointId, validationFlags);
+            return myExternalReplicable?.HasRights(endpointId, validationFlags) ?? base.HasRights(endpointId, validationFlags);
         }
 
         public void RefreshClientData(Endpoint currentSerializationDestinationEndpoint)
@@ -168,7 +155,7 @@ namespace n3bOptimizations.Replication.Inventory
             propsGroup.MarkDirty();
         }
 
-        public void OnOwnershipChanged(MyTerminalBlock block)
+        void OnOwnershipChanged(MyTerminalBlock block)
         {
             InventoryReplicableUpdate.OnChangedOwnership(itemsGroup);
             InventoryReplicableUpdate.OnChangedOwnership(propsGroup);

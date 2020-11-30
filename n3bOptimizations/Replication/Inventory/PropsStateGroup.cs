@@ -14,25 +14,23 @@ namespace n3bOptimizations.Replication.Inventory
 {
     public class PropsStateGroup : IMyStateGroup, IMyNetObject, IMyEventOwner, IMarkDirty
     {
-        public bool IsHighPriority => false;
-
-        public IMyReplicable Owner { get; private set; }
-
-        public bool IsStreaming => false;
-
-        public bool IsValid => Owner != null && Owner.IsValid;
-
-        public bool NeedsUpdate => false;
-
-        private MyReplicationServer _server;
-
-        private ulong _lastFrame = 0;
-
-        public int Batch { get; }
-
-        public bool Scheduled { get; set; }
+        public delegate float PriorityAdjustDelegate(int frameCountWithoutSync, MyClientStateBase clientState, float basePriority);
 
         const int VOLUME_PROP_INDEX = 1;
+
+        readonly Dictionary<Endpoint, DataPerClient> _serverData = new Dictionary<Endpoint, DataPerClient>();
+
+        readonly List<MyTimeSpan> m_propertyTimestamps;
+
+        ulong _lastFrame;
+
+        MyReplicationServer _server;
+
+        public Func<MyEventContext, ValidationResult> GlobalValidate = context => ValidationResult.Passed;
+
+        ListReader<SyncBase> m_properties;
+
+        public MyPropertySyncStateGroup.PriorityAdjustDelegate PriorityAdjust = (frames, state, priority) => priority;
 
         public PropsStateGroup(InventoryReplicable owner, SyncType syncType, int batch)
         {
@@ -44,24 +42,12 @@ namespace n3bOptimizations.Replication.Inventory
             m_properties = syncType.Properties;
             m_propertyTimestamps = new List<MyTimeSpan>(m_properties.Count);
 
-            for (int i = 0; i < m_properties.Count; i++)
-            {
-                m_propertyTimestamps.Add(_server.GetSimulationUpdateTime());
-            }
+            for (var i = 0; i < m_properties.Count; i++) m_propertyTimestamps.Add(_server.GetSimulationUpdateTime());
         }
 
-        private void Notify(SyncBase sync)
-        {
-            m_propertyTimestamps[sync.Id] = _server.GetSimulationUpdateTime();
-            var counter = MySandboxGame.Static.SimulationFrameCounter;
-            var isStatic = (Owner as InventoryReplicable).Instance?.Entity is MyCubeBlock block && block.CubeGrid.IsStatic;
-            if (isStatic && _lastFrame + (uint) InventoryReplicableUpdate.ReplicableInterval > counter) InventoryReplicableUpdate.Schedule(this);
-            else
-            {
-                InventoryReplicableUpdate.Reset(this);
-                MarkDirty();
-            }
-        }
+        public int Batch { get; }
+
+        public bool Scheduled { get; set; }
 
         public void MarkDirty()
         {
@@ -70,13 +56,26 @@ namespace n3bOptimizations.Replication.Inventory
             _lastFrame = counter;
             if (m_properties.Count == 0) return;
 
-            foreach (var clientData in _serverData.Values)
-            {
-                clientData.DirtyProperties.Reset(true);
-            }
+            foreach (var clientData in _serverData.Values) clientData.DirtyProperties.Reset(true);
 
             _server.AddToDirtyGroups(this);
         }
+
+        public void UpdateOwnership()
+        {
+            foreach (var data in _serverData)
+                data.Value.HasRights = (Owner as InventoryReplicable).HasRights(data.Key.Id, ValidationType.Access | ValidationType.Ownership) == ValidationResult.Passed;
+        }
+
+        public bool IsHighPriority => false;
+
+        public IMyReplicable Owner { get; private set; }
+
+        public bool IsStreaming => false;
+
+        public bool IsValid => Owner != null && Owner.IsValid;
+
+        public bool NeedsUpdate => false;
 
         public void CreateClientData(MyClientStateBase forClient)
         {
@@ -104,44 +103,12 @@ namespace n3bOptimizations.Replication.Inventory
             _server = null;
         }
 
-        public void Serialize(BitStream stream, Endpoint forClient, MyTimeSpan serverTimestamp, MyTimeSpan lastClientTimestamp, byte packetId, int maxBitPosition,
-            HashSet<string> cachedData)
-        {
-            if (!stream.Writing) return;
-
-            if (!_serverData.TryGetValue(forClient, out var data))
-            {
-                var bits = new SmallBitField(false);
-                stream.WriteUInt64(bits.Bits, 0);
-                return;
-            }
-
-            var dirtyProperties = data.DirtyProperties;
-            if (!data.HasRights) dirtyProperties[VOLUME_PROP_INDEX] = false;
-            stream.WriteUInt64(dirtyProperties.Bits, m_properties.Count);
-
-            for (int i = 0; i < m_properties.Count; i++)
-            {
-                if (!dirtyProperties[i]) continue;
-                double milliseconds = m_propertyTimestamps[i].Milliseconds;
-                stream.WriteDouble(milliseconds);
-                m_properties[i].Serialize(stream, false, true);
-            }
-
-            if (stream.BitPosition <= maxBitPosition)
-            {
-                var dataPerClient = _serverData[forClient];
-                dataPerClient.SentProperties[packetId].Bits = dataPerClient.DirtyProperties.Bits;
-                dataPerClient.DirtyProperties.Bits = 0UL;
-            }
-        }
-
         public void OnAck(MyClientStateBase forClient, byte packetId, bool delivered)
         {
             if (delivered) return;
             var dataPerClient = _serverData[forClient.EndpointId];
             var dataPerClient2 = dataPerClient;
-            dataPerClient2.DirtyProperties.Bits = (dataPerClient2.DirtyProperties.Bits | dataPerClient.SentProperties[packetId].Bits);
+            dataPerClient2.DirtyProperties.Bits = dataPerClient2.DirtyProperties.Bits | dataPerClient.SentProperties[packetId].Bits;
             _server.AddToDirtyGroups(this);
         }
 
@@ -163,41 +130,67 @@ namespace n3bOptimizations.Replication.Inventory
             return MyStreamProcessingState.None;
         }
 
-        private void OnPropertyCountChanged()
+        void Notify(SyncBase sync)
         {
-            for (int i = m_propertyTimestamps.Count; i < m_properties.Count; i++)
+            m_propertyTimestamps[sync.Id] = _server.GetSimulationUpdateTime();
+            var counter = MySandboxGame.Static.SimulationFrameCounter;
+            var isStatic = (Owner as InventoryReplicable).Instance?.Entity is MyCubeBlock block && block.CubeGrid.IsStatic;
+            if (isStatic && _lastFrame + (uint) InventoryReplicableUpdate.ReplicableInterval > counter)
             {
-                m_propertyTimestamps.Add(MyMultiplayer.Static.ReplicationLayer.GetSimulationUpdateTime());
+                InventoryReplicableUpdate.Schedule(this);
+            }
+            else
+            {
+                InventoryReplicableUpdate.Reset(this);
+                MarkDirty();
             }
         }
 
-        public Func<MyEventContext, ValidationResult> GlobalValidate = (MyEventContext context) => ValidationResult.Passed;
+        public void Serialize(BitStream stream, MyClientInfo forClient, MyTimeSpan serverTimestamp, MyTimeSpan lastClientTimestamp, byte packetId, int maxBitPosition,
+            HashSet<string> cachedData)
+        {
+            var endpoint = forClient.EndpointId;
 
-        public MyPropertySyncStateGroup.PriorityAdjustDelegate PriorityAdjust = (int frames, MyClientStateBase state, float priority) => priority;
+            if (!stream.Writing) return;
 
-        private readonly Dictionary<Endpoint, DataPerClient> _serverData = new Dictionary<Endpoint, DataPerClient>();
+            if (!_serverData.TryGetValue(endpoint, out var data))
+            {
+                var bits = new SmallBitField(false);
+                stream.WriteUInt64(bits.Bits, 0);
+                return;
+            }
 
-        private ListReader<SyncBase> m_properties;
+            var dirtyProperties = data.DirtyProperties;
+            if (!data.HasRights) dirtyProperties[VOLUME_PROP_INDEX] = false;
+            stream.WriteUInt64(dirtyProperties.Bits, m_properties.Count);
 
-        private readonly List<MyTimeSpan> m_propertyTimestamps;
+            for (var i = 0; i < m_properties.Count; i++)
+            {
+                if (!dirtyProperties[i]) continue;
+                var milliseconds = m_propertyTimestamps[i].Milliseconds;
+                stream.WriteDouble(milliseconds);
+                m_properties[i].Serialize(stream, false);
+            }
+
+            if (stream.BitPosition <= maxBitPosition)
+            {
+                var dataPerClient = _serverData[endpoint];
+                dataPerClient.SentProperties[packetId].Bits = dataPerClient.DirtyProperties.Bits;
+                dataPerClient.DirtyProperties.Bits = 0UL;
+            }
+        }
+
+        void OnPropertyCountChanged()
+        {
+            for (var i = m_propertyTimestamps.Count; i < m_properties.Count; i++) m_propertyTimestamps.Add(MyMultiplayer.Static.ReplicationLayer.GetSimulationUpdateTime());
+        }
 
         public class DataPerClient
         {
+            public readonly SmallBitField[] SentProperties = new SmallBitField[256];
             public SmallBitField DirtyProperties = new SmallBitField(false);
 
-            public readonly SmallBitField[] SentProperties = new SmallBitField[256];
-
             public bool HasRights = true;
-        }
-
-        public delegate float PriorityAdjustDelegate(int frameCountWithoutSync, MyClientStateBase clientState, float basePriority);
-
-        public void UpdateOwnership()
-        {
-            foreach (var data in _serverData)
-            {
-                data.Value.HasRights = (Owner as InventoryReplicable).HasRights(data.Key.Id, ValidationType.Access | ValidationType.Ownership) == ValidationResult.Passed;
-            }
         }
     }
 }

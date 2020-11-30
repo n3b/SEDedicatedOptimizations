@@ -27,7 +27,7 @@ namespace n3bOptimizations.Patch.SafeZone
         public static void RemoveEntityInternalPostfix(MyEntity entity, ref bool __result)
         {
             if (!__result) return;
-            entity.SetSafeZone();
+            entity.SetSafeZone(null);
         }
 
         public static void InsertEntity_ImplementationPostfix(long entityId, ref MyConcurrentHashSet<long> ___m_containedEntities, ref MySafeZone __instance)

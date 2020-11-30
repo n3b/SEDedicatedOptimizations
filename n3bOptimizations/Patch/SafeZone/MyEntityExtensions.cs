@@ -25,7 +25,7 @@ namespace n3bOptimizations.Patch.SafeZone
             }
         }
 
-        public static void SetSafeZone(this MyEntity @this, MySafeZone zone = null)
+        public static void SetSafeZone(this MyEntity @this, MySafeZone? zone)
         {
             try
             {

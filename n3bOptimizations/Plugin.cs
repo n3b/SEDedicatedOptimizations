@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Controls;
-using System.Windows.Threading;
 using HarmonyLib;
 using n3bOptimizations.Patch.GasTank;
 using n3bOptimizations.Replication.Inventory;
@@ -23,10 +22,14 @@ namespace n3bOptimizations
         public static PluginConfig StaticConfig;
 
         static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        private Persistent<PluginConfig> _config;
+        Persistent<PluginConfig> _config;
+        PluginControl _control;
         public PluginConfig Config => _config?.Data;
-        private PluginControl _control;
-        public UserControl GetControl() => _control ?? (_control = new PluginControl(this));
+
+        public UserControl GetControl()
+        {
+            return _control ?? (_control = new PluginControl(this));
+        }
 
         public override void Init(ITorchBase torch)
         {
@@ -51,10 +54,6 @@ namespace n3bOptimizations
                 }
 #endif
             }
-
-
-            new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.ApplicationIdle, (s, e) => { Console.WriteLine(">>>>>>>>> timer fired"); },
-                Dispatcher.CurrentDispatcher);
 
             torch.GameStateChanged += GameStateChanged;
             var manager = torch.Managers.GetManager<TorchSessionManager>();
@@ -81,7 +80,7 @@ namespace n3bOptimizations
             // todo
         }
 
-        private void SetupConfig()
+        void SetupConfig()
         {
             var configFile = Path.Combine(StoragePath, "n3bOptimizations.cfg");
 
@@ -96,6 +95,7 @@ namespace n3bOptimizations
 
             if (_config?.Data == null)
             {
+                Directory.CreateDirectory(StoragePath);
                 _config = new Persistent<PluginConfig>(configFile, new PluginConfig());
                 _config.Save();
             }
